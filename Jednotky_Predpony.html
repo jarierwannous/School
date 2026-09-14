@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kvíz: Komplexné premeny jednotiek</title>
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-hover: #0284c7;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --correct-bg: #dcfce7;
+            --correct-border: #22c55e;
+            --correct-text: #166534;
+            --incorrect-bg: #fee2e2;
+            --incorrect-border: #ef4444;
+            --incorrect-text: #991b1b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body, html { height: 100%; background-color: var(--bg-color); color: var(--text-main); display: flex; flex-direction: column; }
+        .progress-container { width: 100%; height: 6px; background-color: #e2e8f0; position: fixed; top: 0; left: 0; z-index: 10; }
+        .progress-bar { height: 100%; background-color: var(--primary); width: 0%; transition: width 0.4s ease; }
+        .app-container { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; width: 100%; max-width: 800px; margin: 0 auto; }
+        .quiz-card { background: var(--card-bg); width: 100%; border-radius: 16px; padding: 30px 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); display: flex; flex-direction: column; max-height: 90vh; overflow-y: auto; }
+        .question-header { font-size: 0.9rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
+        .question-text { font-size: 1.3rem; font-weight: 700; margin-bottom: 25px; line-height: 1.4; }
+        .options-container { display: flex; flex-direction: column; gap: 10px; }
+        .option-btn { background: var(--card-bg); border: 2px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; font-size: 1.05rem; text-align: left; cursor: pointer; transition: all 0.2s ease; color: var(--text-main); font-weight: 500; }
+        .option-btn:hover:not(:disabled) { border-color: var(--primary); background-color: #f0f9ff; }
+        .option-btn:disabled { cursor: default; }
+        .option-btn.correct { background-color: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+        .option-btn.incorrect { background-color: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+        .feedback-box { margin-top: 20px; padding: 16px; border-radius: 12px; font-size: 1rem; line-height: 1.5; display: none; animation: fadeIn 0.4s ease; }
+        .feedback-box.show { display: block; }
+        .feedback-box.correct-feedback { background-color: var(--correct-bg); border-left: 5px solid var(--correct-border); color: var(--correct-text); }
+        .feedback-box.incorrect-feedback { background-color: var(--incorrect-bg); border-left: 5px solid var(--incorrect-border); color: var(--incorrect-text); }
+        .feedback-box b { display: block; margin-bottom: 6px; font-size: 1.1rem; }
+        .action-btn { margin-top: 20px; background-color: var(--primary); color: white; border: none; border-radius: 12px; padding: 16px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: background 0.2s ease; width: 100%; display: none; }
+        .action-btn:hover { background-color: var(--primary-hover); }
+        .action-btn.show { display: block; animation: fadeIn 0.4s ease; }
+        .result-screen { text-align: center; display: none; }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 800; margin: 0 auto 30px auto; box-shadow: 0 10px 25px rgba(14, 165, 233, 0.3); }
+        .result-title { font-size: 2rem; font-weight: 800; margin-bottom: 15px; }
+        .result-msg { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 30px; line-height: 1.5; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 600px) { .app-container { padding: 10px; } .quiz-card { padding: 20px 15px; } .question-text { font-size: 1.2rem; } .option-btn { font-size: 0.95rem; padding: 12px 14px; } }
+    </style>
+</head>
+<body>
+    <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="app-container">
+        <div class="quiz-card" id="quizScreen">
+            <div class="question-header" id="questionHeader">Otázka 1 / 40</div>
+            <div class="question-text" id="questionText">Otázka sa načítava...</div>
+            <div class="options-container" id="optionsContainer"></div>
+            <div class="feedback-box" id="feedbackBox"></div>
+            <button class="action-btn" id="nextBtn" onclick="nextQuestion()">Ďalšia otázka ➔</button>
+        </div>
+        <div class="quiz-card result-screen" id="resultScreen">
+            <div class="score-circle" id="scoreDisplay">0%</div>
+            <div class="result-title" id="resultTitle">Vyhodnotenie</div>
+            <div class="result-msg" id="resultMsg">Správa</div>
+            <button class="action-btn show" onclick="location.reload()">Spustiť kvíz znova</button>
+        </div>
+    </div>
+    <script>
+        const quizData = [{"q": "1. 1 nm (nanometer) je koľko metrov?", "options": ["1 &times; 10<sup>-6</sup> m", "1 &times; 10<sup>-9</sup> m", "1 &times; 10<sup>-12</sup> m", "1 &times; 10<sup>-3</sup> m"], "answer": 1, "explanation": "Predpona 'nano' (n) znamená miliardtinu, teda 10<sup>-9</sup>."}, {"q": "2. Premeň 500 mA (miliampérov) na základnú jednotku Ampér (A).", "options": ["0,05 A", "0,5 A", "5 A", "50 A"], "answer": 1, "explanation": "Mili (m) znamená tisícinu (10<sup>-3</sup>). Preto 500 / 1000 = 0,5 A."}, {"q": "3. 2,5 &times; 10<sup>4</sup> pF (pikofaradov) je koľko nF (nanofaradov)?", "options": ["25 nF", "250 nF", "2,5 nF", "0,25 nF"], "answer": 0, "explanation": "Piko je 10<sup>-12</sup> a nano je 10<sup>-9</sup>. Rozdiel sú 3 rády (tisíc). 25 000 pF = 25 nF."}, {"q": "4. Aký výkon predstavujú 3 MW (megawatty) vo Wattoch?", "options": ["3 &times; 10<sup>3</sup> W", "3 &times; 10<sup>6</sup> W", "3 &times; 10<sup>9</sup> W", "3 &times; 10<sup>12</sup> W"], "answer": 1, "explanation": "Mega (M) znamená milión, čiže 10<sup>6</sup>."}, {"q": "5. Premeň 4,2 &times; 10<sup>-3</sup> km na základnú jednotku meter (m).", "options": ["0,42 m", "4,2 m", "42 m", "420 m"], "answer": 1, "explanation": "Kilo (k) je 10<sup>3</sup>. (4,2 &times; 10<sup>-3</sup>) &times; 10<sup>3</sup> = 4,2 &times; 10<sup>0</sup> = 4,2 m."}, {"q": "6. 150 &mu;g (mikrogramov) je koľko mg (miligramov)?", "options": ["0,15 mg", "1,5 mg", "15 mg", "1500 mg"], "answer": 0, "explanation": "Mikro (10<sup>-6</sup>) je tisíckrát menšie ako mili (10<sup>-3</sup>). 150 / 1000 = 0,15 mg."}, {"q": "7. 1,2 TJ (Terajoulov) premeň na GJ (Gigajouly).", "options": ["12 GJ", "120 GJ", "1200 GJ", "12 000 GJ"], "answer": 2, "explanation": "Tera (T) je 10<sup>12</sup> a Giga (G) je 10<sup>9</sup>. Rozdiel je 1000. 1,2 * 1000 = 1200 GJ."}, {"q": "8. 7 &times; 10<sup>5</sup> nm (nanometrov) je koľko mm (milimetrov)?", "options": ["0,07 mm", "0,7 mm", "7 mm", "70 mm"], "answer": 1, "explanation": "Z nano (10<sup>-9</sup>) na mili (10<sup>-3</sup>) je rozdiel 6 rádov. (7 &times; 10<sup>5</sup>) / 10<sup>6</sup> = 0,7 mm."}, {"q": "9. Koľko M&Omega; (megaohmov) je 0,05 G&Omega; (gigaohmov)?", "options": ["5 M&Omega;", "50 M&Omega;", "500 M&Omega;", "5000 M&Omega;"], "answer": 1, "explanation": "Giga (10<sup>9</sup>) je tisíckrát väčšie ako Mega (10<sup>6</sup>). 0,05 * 1000 = 50 M&Omega;."}, {"q": "10. 8 &times; 10<sup>-6</sup> s (sekúnd) premeň na &mu;s (mikrosekundy).", "options": ["0,8 &mu;s", "8 &mu;s", "80 &mu;s", "800 &mu;s"], "answer": 1, "explanation": "Mikro (&mu;) priamo znamená 10<sup>-6</sup>. Preto je to presne 8 &mu;s."}, {"q": "11. Tlak 45 hPa (hektopascalov) je koľko Pascalov (Pa)?", "options": ["4,5 Pa", "450 Pa", "4500 Pa", "45 000 Pa"], "answer": 2, "explanation": "Hekto (h) znamená sto (10<sup>2</sup>). 45 * 100 = 4500 Pa."}, {"q": "12. 6,5 &times; 10<sup>8</sup> B (bajtov) je koľko MB (megabajtov)? (počítaj v desiatkovej sústave, 1M = 10^6)", "options": ["6,5 MB", "65 MB", "650 MB", "6500 MB"], "answer": 2, "explanation": "(6,5 &times; 10<sup>8</sup>) / 10<sup>6</sup> = 6,5 &times; 10<sup>2</sup> = 650 MB."}, {"q": "13. 3,3 &times; 10<sup>-2</sup> MV (megavoltov) je koľko kV (kilovoltov)?", "options": ["3,3 kV", "33 kV", "330 kV", "0,33 kV"], "answer": 1, "explanation": "Mega (10<sup>6</sup>) do kilo (10<sup>3</sup>) je 1000-násobok. (3,3 &times; 10<sup>-2</sup>) * 1000 = 33 kV."}, {"q": "14. Premeň 9000 pm (pikometrov) na nm (nanometre).", "options": ["0,9 nm", "9 nm", "90 nm", "900 nm"], "answer": 1, "explanation": "Piko (10<sup>-12</sup>) do nano (10<sup>-9</sup>) vyžaduje delenie 1000. 9000 / 1000 = 9 nm."}, {"q": "15. 2,1 &times; 10<sup>11</sup> Hz je koľko THz (terahertzov)?", "options": ["0,21 THz", "2,1 THz", "21 THz", "210 THz"], "answer": 0, "explanation": "Tera je 10<sup>12</sup>. (2,1 &times; 10<sup>11</sup>) / 10<sup>12</sup> = 2,1 &times; 10<sup>-1</sup> = 0,21 THz."}, {"q": "16. 0,003 &mu;m (mikrometrov) je koľko nm (nanometrov)?", "options": ["0,3 nm", "3 nm", "30 nm", "300 nm"], "answer": 1, "explanation": "Mikro je 10<sup>-6</sup>, nano je 10<sup>-9</sup>. Násobíme 1000. 0,003 * 1000 = 3 nm."}, {"q": "17. 1,5 &times; 10<sup>5</sup> cL (centilitrov) je koľko litrov (L)?", "options": ["150 L", "1500 L", "15 000 L", "150 000 L"], "answer": 1, "explanation": "Centi (c) znamená stotinu (10<sup>-2</sup>). (1,5 &times; 10<sup>5</sup>) / 100 = 1,5 &times; 10<sup>3</sup> = 1500 L."}, {"q": "18. Premeň 750 mN (milinewtonov) na N (Newtony).", "options": ["0,075 N", "0,75 N", "7,5 N", "75 N"], "answer": 1, "explanation": "Mili (10<sup>-3</sup>) znamená delenie 1000. 750 / 1000 = 0,75 N."}, {"q": "19. 4 &times; 10<sup>3</sup> &mu;A (mikroampérov) je koľko mA (miliampérov)?", "options": ["0,4 mA", "4 mA", "40 mA", "400 mA"], "answer": 1, "explanation": "Z mikro (10<sup>-6</sup>) na mili (10<sup>-3</sup>) delíme 1000. 4000 / 1000 = 4 mA."}, {"q": "20. 5,5 &times; 10<sup>-7</sup> Tm (terametrov) je koľko km (kilometrov)?", "options": ["5,5 km", "55 km", "550 km", "5500 km"], "answer": 2, "explanation": "Tera je 10<sup>12</sup>, kilo je 10<sup>3</sup>. Rozdiel je 10<sup>9</sup>. (5,5 &times; 10<sup>-7</sup>) * 10<sup>9</sup> = 5,5 * 100 = 550 km."}, {"q": "21. 36 km/h je koľko m/s?", "options": ["10 m/s", "15 m/s", "20 m/s", "129,6 m/s"], "answer": 0, "explanation": "Na premenu z km/h do m/s delíme číslom 3,6. 36 / 3,6 = 10 m/s."}, {"q": "22. Premeň 15 m/s na km/h.", "options": ["4,16 km/h", "30 km/h", "54 km/h", "72 km/h"], "answer": 2, "explanation": "Z m/s do km/h násobíme číslom 3,6. 15 * 3,6 = 54 km/h."}, {"q": "23. 2 m<sup>2</sup> (metre štvorcové) je koľko cm<sup>2</sup>?", "options": ["200 cm<sup>2</sup>", "2 000 cm<sup>2</sup>", "20 000 cm<sup>2</sup>", "200 000 cm<sup>2</sup>"], "answer": 2, "explanation": "1 m = 100 cm. Pre plochu to umocníme: 1 m<sup>2</sup> = 100 * 100 = 10 000 cm<sup>2</sup>. Preto 2 * 10 000 = 20 000 cm<sup>2</sup>."}, {"q": "24. Premeň 5000 mm<sup>2</sup> na m<sup>2</sup>.", "options": ["0,005 m<sup>2</sup>", "0,05 m<sup>2</sup>", "0,5 m<sup>2</sup>", "5 m<sup>2</sup>"], "answer": 0, "explanation": "1 m = 1000 mm. Plocha: 1 m<sup>2</sup> = 1 000 000 mm<sup>2</sup>. 5000 / 1 000 000 = 0,005 m<sup>2</sup>."}, {"q": "25. 1 m<sup>3</sup> (meter kubický) je koľko litrov?", "options": ["10 L", "100 L", "1 000 L", "10 000 L"], "answer": 2, "explanation": "Jeden liter je presne 1 dm<sup>3</sup>. 1 m<sup>3</sup> obsahuje 1000 dm<sup>3</sup>, čiže 1000 litrov."}, {"q": "26. 3,5 litra je koľko mililitrov (mL)?", "options": ["35 mL", "350 mL", "3 500 mL", "35 000 mL"], "answer": 2, "explanation": "Predpona mili znamená tisícinu. V 1 litri je 1000 mL. 3,5 * 1000 = 3500 mL."}, {"q": "27. Aká je premena 1 g/cm<sup>3</sup> (hustota vody) na kg/m<sup>3</sup>?", "options": ["1 kg/m<sup>3</sup>", "10 kg/m<sup>3</sup>", "100 kg/m<sup>3</sup>", "1 000 kg/m<sup>3</sup>"], "answer": 3, "explanation": "1 g = 0,001 kg a 1 cm<sup>3</sup> = 0,000001 m<sup>3</sup>. (0,001) / (0,000001) = 1000. Z g/cm<sup>3</sup> na kg/m<sup>3</sup> násobíme tisícom."}, {"q": "28. Hustota ocele je cca 7800 kg/m<sup>3</sup>. Koľko je to v g/cm<sup>3</sup>?", "options": ["0,78 g/cm<sup>3</sup>", "7,8 g/cm<sup>3</sup>", "78 g/cm<sup>3</sup>", "780 g/cm<sup>3</sup>"], "answer": 1, "explanation": "Opačný postup ako v predchádzajúcej otázke – delíme číslom 1000. 7800 / 1000 = 7,8 g/cm<sup>3</sup>."}, {"q": "29. Rozloha 1 ha (hektár) je koľko metrov štvorcových (m<sup>2</sup>)?", "options": ["100 m<sup>2</sup>", "1 000 m<sup>2</sup>", "10 000 m<sup>2</sup>", "100 000 m<sup>2</sup>"], "answer": 2, "explanation": "Hektár je plocha štvorca so stranou 100 metrov. 100 * 100 = 10 000 m<sup>2</sup>."}, {"q": "30. Rýchlosť 108 km/h zodpovedá rýchlosti:", "options": ["20 m/s", "25 m/s", "30 m/s", "35 m/s"], "answer": 2, "explanation": "Delíme konštantou 3,6. 108 / 3,6 = 30 m/s."}, {"q": "31. Rýchlosť 25 m/s premeň na km/h.", "options": ["72 km/h", "90 km/h", "100 km/h", "120 km/h"], "answer": 1, "explanation": "Násobíme konštantou 3,6. 25 * 3,6 = 90 km/h."}, {"q": "32. 3,2 m<sup>2</sup> je koľko dm<sup>2</sup>?", "options": ["32 dm<sup>2</sup>", "320 dm<sup>2</sup>", "3 200 dm<sup>2</sup>", "32 000 dm<sup>2</sup>"], "answer": 1, "explanation": "1 m = 10 dm. 1 m<sup>2</sup> = 100 dm<sup>2</sup>. 3,2 * 100 = 320 dm<sup>2</sup>."}, {"q": "33. 450 cm<sup>3</sup> premeň na dm<sup>3</sup> (litre).", "options": ["0,045 dm<sup>3</sup>", "0,45 dm<sup>3</sup>", "4,5 dm<sup>3</sup>", "45 dm<sup>3</sup>"], "answer": 1, "explanation": "1 dm = 10 cm. Objem: 1 dm<sup>3</sup> = 1000 cm<sup>3</sup>. 450 / 1000 = 0,45 dm<sup>3</sup>."}, {"q": "34. Hustota oleja je 0,8 g/mL. Koľko je to kg/m<sup>3</sup>?", "options": ["8 kg/m<sup>3</sup>", "80 kg/m<sup>3</sup>", "800 kg/m<sup>3</sup>", "8 000 kg/m<sup>3</sup>"], "answer": 2, "explanation": "Keďže 1 mL = 1 cm<sup>3</sup>, ide o premenu z g/cm<sup>3</sup> na kg/m<sup>3</sup>. Násobíme tisícom: 0,8 * 1000 = 800 kg/m<sup>3</sup>."}, {"q": "35. 2,5 a (áru) je koľko m<sup>2</sup>?", "options": ["25 m<sup>2</sup>", "250 m<sup>2</sup>", "2 500 m<sup>2</sup>", "25 000 m<sup>2</sup>"], "answer": 1, "explanation": "1 ár (a) je plocha 10x10 metrov, čiže 100 m<sup>2</sup>. 2,5 * 100 = 250 m<sup>2</sup>."}, {"q": "36. 50 dm<sup>3</sup> (litrov) je koľko metrov kubických (m<sup>3</sup>)?", "options": ["0,005 m<sup>3</sup>", "0,05 m<sup>3</sup>", "0,5 m<sup>3</sup>", "5 m<sup>3</sup>"], "answer": 1, "explanation": "V 1 m<sup>3</sup> je 1000 dm<sup>3</sup>. 50 / 1000 = 0,05 m<sup>3</sup>."}, {"q": "37. Ortuť má hustotu 13 600 kg/m<sup>3</sup>. Premeň ju na g/cm<sup>3</sup>.", "options": ["1,36 g/cm<sup>3</sup>", "13,6 g/cm<sup>3</sup>", "136 g/cm<sup>3</sup>", "1 360 g/cm<sup>3</sup>"], "answer": 1, "explanation": "Pri premene z kg/m<sup>3</sup> na g/cm<sup>3</sup> delíme 1000. 13 600 / 1000 = 13,6 g/cm<sup>3</sup>."}, {"q": "38. Premeň 72 km/h na m/s.", "options": ["15 m/s", "20 m/s", "25 m/s", "30 m/s"], "answer": 1, "explanation": "72 / 3,6 = 20 m/s. Veľmi častý a typický príklad z kinematiky!"}, {"q": "39. 1200 mm<sup>2</sup> je koľko cm<sup>2</sup>?", "options": ["0,12 cm<sup>2</sup>", "1,2 cm<sup>2</sup>", "12 cm<sup>2</sup>", "120 cm<sup>2</sup>"], "answer": 2, "explanation": "1 cm = 10 mm. Plocha: 1 cm<sup>2</sup> = 100 mm<sup>2</sup>. 1200 / 100 = 12 cm<sup>2</sup>."}, {"q": "40. 0,5 km<sup>2</sup> je koľko hektárov (ha)?", "options": ["5 ha", "50 ha", "500 ha", "5 000 ha"], "answer": 1, "explanation": "1 km<sup>2</sup> = 1 000 000 m<sup>2</sup>. 1 ha = 10 000 m<sup>2</sup>. Teda v 1 km<sup>2</sup> je 100 ha. 0,5 * 100 = 50 ha."}];
+        let currentQuestion = 0; let score = 0;
+        const questionHeader = document.getElementById('questionHeader');
+        const questionText = document.getElementById('questionText');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const feedbackBox = document.getElementById('feedbackBox');
+        const nextBtn = document.getElementById('nextBtn');
+        const progressBar = document.getElementById('progressBar');
+        const quizScreen = document.getElementById('quizScreen');
+        const resultScreen = document.getElementById('resultScreen');
+
+        function loadQuestion() {
+            feedbackBox.className = 'feedback-box'; feedbackBox.innerHTML = '';
+            nextBtn.classList.remove('show'); optionsContainer.innerHTML = '';
+            const q = quizData[currentQuestion];
+            questionHeader.textContent = `Otázka ${currentQuestion + 1} z ${quizData.length}`;
+            questionText.innerHTML = q.q;
+            progressBar.style.width = `${((currentQuestion) / quizData.length) * 100}%`;
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn'; btn.innerHTML = opt;
+                btn.onclick = () => selectAnswer(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function selectAnswer(selectedIndex, selectedBtn) {
+            const q = quizData[currentQuestion]; const allBtns = optionsContainer.children;
+            for (let i = 0; i < allBtns.length; i++) {
+                allBtns[i].disabled = true;
+                if (i === q.answer) allBtns[i].classList.add('correct');
+            }
+            if (selectedIndex === q.answer) {
+                score++;
+                feedbackBox.className = 'feedback-box show correct-feedback';
+                feedbackBox.innerHTML = `<b>Správne! 🎉</b> ${q.explanation}`;
+            } else {
+                selectedBtn.classList.add('incorrect');
+                feedbackBox.className = 'feedback-box show incorrect-feedback';
+                feedbackBox.innerHTML = `<b>Nesprávne.</b> ${q.explanation}`;
+            }
+            if (currentQuestion === quizData.length - 1) nextBtn.textContent = 'Zobraziť výsledky ➔';
+            nextBtn.classList.add('show');
+            setTimeout(() => nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion < quizData.length) loadQuestion(); else showResults();
+        }
+
+        function showResults() {
+            progressBar.style.width = '100%'; quizScreen.style.display = 'none'; resultScreen.style.display = 'block';
+            const percentage = Math.round((score / quizData.length) * 100);
+            document.getElementById('scoreDisplay').innerHTML = `<span>${score}</span><span style="font-size: 1.2rem; opacity: 0.8">/${quizData.length}</span>`;
+            document.getElementById('resultTitle').textContent = percentage >= 90 ? "Excelentne! 🏆" : percentage >= 70 ? "Veľmi dobrá práca! 👍" : percentage >= 50 ? "Dobrý základ. 📚" : "Treba ešte potrénovať. 💡";
+            document.getElementById('resultMsg').textContent = percentage >= 90 ? "Komplexné premeny jednotiek zvládaš absolútne bez chýb! Máš skvelú výdrž na 40 otázok." : percentage >= 70 ? "Väčšinu premien máš v malíčku, pozor na drobné chyby z nepozornosti pri takejto dlhej sérii." : percentage >= 50 ? "Základy ti idú, ale zložitejšie prevody a umocňovanie vyžadujú ešte tréning." : "Zopakuj si prevodové vzťahy a predpony, presnosť je vo fyzike kľúčová.";
+        }
+        loadQuestion();
+    </script>
+</body>
+</html>
