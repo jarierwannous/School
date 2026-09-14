@@ -1,0 +1,369 @@
+
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Interaktívny kvíz: Vedecký zápis čísel</title>
+    <style>
+        :root {
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --correct-bg: #dcfce7;
+            --correct-border: #22c55e;
+            --correct-text: #166534;
+            --incorrect-bg: #fee2e2;
+            --incorrect-border: #ef4444;
+            --incorrect-text: #991b1b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        
+        body, html {
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background-color: #e2e8f0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--primary);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .quiz-card {
+            background: var(--card-bg);
+            width: 100%;
+            border-radius: 16px;
+            padding: 30px 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .question-header {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .question-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option-btn {
+            background: var(--card-bg);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px 18px;
+            font-size: 1.05rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #f5f3ff;
+        }
+
+        .option-btn:disabled {
+            cursor: default;
+        }
+
+        .option-btn.correct {
+            background-color: var(--correct-bg);
+            border-color: var(--correct-border);
+            color: var(--correct-text);
+        }
+
+        .option-btn.incorrect {
+            background-color: var(--incorrect-bg);
+            border-color: var(--incorrect-border);
+            color: var(--incorrect-text);
+        }
+
+        .feedback-box {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 1rem;
+            line-height: 1.5;
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .feedback-box.show {
+            display: block;
+        }
+
+        .feedback-box.correct-feedback {
+            background-color: var(--correct-bg);
+            border-left: 5px solid var(--correct-border);
+            color: var(--correct-text);
+        }
+
+        .feedback-box.incorrect-feedback {
+            background-color: var(--incorrect-bg);
+            border-left: 5px solid var(--incorrect-border);
+            color: var(--incorrect-text);
+        }
+
+        .feedback-box b {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 1.1rem;
+        }
+
+        .action-btn {
+            margin-top: 20px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            width: 100%;
+            display: none;
+        }
+
+        .action-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .action-btn.show {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .result-screen {
+            text-align: center;
+            display: none;
+        }
+
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: 800;
+            margin: 0 auto 30px auto;
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
+        }
+
+        .result-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+        }
+
+        .result-msg {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 600px) {
+            .app-container { padding: 10px; }
+            .quiz-card { padding: 20px 15px; }
+            .question-text { font-size: 1.2rem; }
+            .option-btn { font-size: 0.95rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="app-container">
+        
+        <div class="quiz-card" id="quizScreen">
+            <div class="question-header" id="questionHeader">Otázka 1 / 20</div>
+            <div class="question-text" id="questionText">Otázka sa načítava...</div>
+            
+            <div class="options-container" id="optionsContainer">
+            </div>
+
+            <div class="feedback-box" id="feedbackBox"></div>
+
+            <button class="action-btn" id="nextBtn" onclick="nextQuestion()">Ďalšia otázka ➔</button>
+        </div>
+
+        <div class="quiz-card result-screen" id="resultScreen">
+            <div class="score-circle" id="scoreDisplay">0%</div>
+            <div class="result-title" id="resultTitle">Vyhodnotenie</div>
+            <div class="result-msg" id="resultMsg">Správa</div>
+            <button class="action-btn show" onclick="location.reload()">Spustiť kvíz znova</button>
+        </div>
+
+    </div>
+
+    <script>
+        const quizData = [{"q": "1. Ak\u00e9 je z\u00e1kladn\u00e9 pravidlo pre mantisu (\u010d\u00edslo pred mocninou desiatky) v spr\u00e1vnom vedeckom z\u00e1pise?", "options": ["Mus\u00ed by\u0165 v\u00e4\u010d\u0161ia alebo rovn\u00e1 1 a men\u0161ia ako 10.", "Mus\u00ed by\u0165 cel\u00e9 \u010d\u00edslo (bez desatinnej \u010diarky).", "Mus\u00ed by\u0165 v\u00e4\u010d\u0161ia ako 0 a men\u0161ia ako 100.", "M\u00f4\u017ee to by\u0165 ak\u00e9ko\u013evek \u010d\u00edslo, ak je za n\u00edm mocnina 10."], "answer": 0, "explanation": "Z\u00e1kladn\u00fdm pravidlom vedeck\u00e9ho z\u00e1pisu je, \u017ee \u010d\u00edslo (mantisa) mus\u00ed by\u0165 z intervalu <1, 10). Teda m\u00f4\u017ee to by\u0165 1, 1.5, 9.99, ale nie 0.5 ani 10."}, {"q": "2. Ktor\u00fd z nasleduj\u00facich z\u00e1pisov je v SPR\u00c1VNOM vedeckom tvare?", "options": ["45 &times; 10<sup>3</sup>", "4,5 &times; 10<sup>4</sup>", "0,45 &times; 10<sup>5</sup>", "450 &times; 10<sup>2</sup>"], "answer": 1, "explanation": "Iba \u010d\u00edslo 4,5 sp\u013a\u0148a podmienku, \u017ee mus\u00ed by\u0165 od 1 do 9,999... Ostatn\u00e9 \u010d\u00edsla (45, 0,45, 450) nie s\u00fa v spr\u00e1vnom tvare."}, {"q": "3. Ako zap\u00ed\u0161eme \u010d\u00edslo 150 000 vo vedeckom tvare?", "options": ["15 &times; 10<sup>4</sup>", "1,5 &times; 10<sup>5</sup>", "0,15 &times; 10<sup>6</sup>", "1,5 &times; 10<sup>6</sup>"], "answer": 1, "explanation": "Desatinn\u00fa \u010diarku posunieme o 5 miest do\u013eava, aby sme dostali 1,5. Preto n\u00e1sob\u00edme \u010d\u00edslom 10 na piatu (10<sup>5</sup>)."}, {"q": "4. Ako zap\u00ed\u0161eme \u010d\u00edslo 0,000 72 vo vedeckom tvare?", "options": ["7,2 &times; 10<sup>-4</sup>", "7,2 &times; 10<sup>-5</sup>", "72 &times; 10<sup>-5</sup>", "0,72 &times; 10<sup>-3</sup>"], "answer": 0, "explanation": "\u010ciarku pos\u00favame o 4 miesta doprava, aby sme dostali 7,2. Ke\u010f\u017ee ide o mal\u00e9 \u010d\u00edslo (menej ako 1), exponent je z\u00e1porn\u00fd: -4."}, {"q": "5. Preve\u010f 45,2 &times; 10<sup>3</sup> do SPR\u00c1VNEHO vedeck\u00e9ho z\u00e1pisu.", "options": ["4,52 &times; 10<sup>4</sup>", "4,52 &times; 10<sup>2</sup>", "0,452 &times; 10<sup>5</sup>", "452 &times; 10<sup>1</sup>"], "answer": 0, "explanation": "\u010c\u00edslo 45,2 mus\u00edme zmen\u0161i\u0165 na 4,52 (posun \u010diarky o 1 miesto do\u013eava). Aby sa hodnota zachovala, mus\u00edme exponent o 1 zv\u00e4\u010d\u0161i\u0165 (3 + 1 = 4)."}, {"q": "6. Preve\u010f 0,035 &times; 10<sup>5</sup> do spr\u00e1vneho vedeck\u00e9ho z\u00e1pisu.", "options": ["3,5 &times; 10<sup>7</sup>", "3,5 &times; 10<sup>3</sup>", "3,5 &times; 10<sup>2</sup>", "35 &times; 10<sup>4</sup>"], "answer": 1, "explanation": "\u010c\u00edslo 0,035 mus\u00edme zv\u00e4\u010d\u0161i\u0165 na 3,5 (posun o 2 miesta doprava). Preto mus\u00edme exponent o 2 zmen\u0161i\u0165 (5 - 2 = 3)."}, {"q": "7. Uprav 750 &times; 10<sup>-4</sup> do spr\u00e1vneho vedeck\u00e9ho z\u00e1pisu.", "options": ["7,5 &times; 10<sup>-6</sup>", "7,5 &times; 10<sup>-2</sup>", "75 &times; 10<sup>-3</sup>", "7,5 &times; 10<sup>-1</sup>"], "answer": 1, "explanation": "\u010c\u00edslo 750 zmen\u0161ujeme na 7,5 (posun o 2 miesta do\u013eava). Exponent o 2 zv\u00e4\u010d\u0161ujeme: -4 + 2 = -2."}, {"q": "8. Ak\u00fd je spr\u00e1vny tvar pre 0,8 &times; 10<sup>-2</sup>?", "options": ["8 &times; 10<sup>-1</sup>", "8 &times; 10<sup>-3</sup>", "8 &times; 10<sup>-4</sup>", "80 &times; 10<sup>-4</sup>"], "answer": 1, "explanation": "\u010c\u00edslo 0,8 zv\u00e4\u010d\u0161ujeme na 8 (posun o 1 miesto doprava). Exponent teda o 1 zmen\u0161\u00edme: -2 - 1 = -3."}, {"q": "9. Ak\u00e9 \u010d\u00edslo sa skr\u00fdva za z\u00e1pisom 3,14 &times; 10<sup>2</sup>?", "options": ["314", "3 140", "0,0314", "31,4"], "answer": 0, "explanation": "Kladn\u00fd exponent (10 na druh\u00fa je 100) znamen\u00e1, \u017ee desatinn\u00fa \u010diarku posunieme o 2 miesta doprava. 3,14 * 100 = 314."}, {"q": "10. Ktor\u00fd z\u00e1pis patr\u00ed \u010d\u00edslu 0,000005?", "options": ["5 &times; 10<sup>-5</sup>", "5 &times; 10<sup>-6</sup>", "5 &times; 10<sup>6</sup>", "0,5 &times; 10<sup>-5</sup>"], "answer": 1, "explanation": "Pos\u00favame \u010diarku doprava za p\u00e4\u0165ku, \u010do je presne 6 miest. Preto\u017ee je \u010d\u00edslo men\u0161ie ako 1, exponent je -6."}, {"q": "11. R\u00fdchlos\u0165 svetla je pribli\u017ene 300 000 000 m/s. Vo vedeckom z\u00e1pise je to:", "options": ["3 &times; 10<sup>9</sup> m/s", "30 &times; 10<sup>7</sup> m/s", "3 &times; 10<sup>8</sup> m/s", "0,3 &times; 10<sup>9</sup> m/s"], "answer": 2, "explanation": "M\u00e1me trojku a za \u0148ou osem n\u00fal, tak\u017ee posun o 8 miest do\u013eava d\u00e1va 3 &times; 10<sup>8</sup>."}, {"q": "12. Uprav 524,3 &times; 10<sup>-6</sup> do spr\u00e1vneho vedeck\u00e9ho tvaru.", "options": ["5,243 &times; 10<sup>-4</sup>", "5,243 &times; 10<sup>-8</sup>", "5,243 &times; 10<sup>-3</sup>", "5,243 &times; 10<sup>-5</sup>"], "answer": 0, "explanation": "\u010c\u00edslo zmen\u0161ujeme o 2 r\u00e1dy (posun do\u013eava na 5,243), tak\u017ee exponent mus\u00edme zv\u00e4\u010d\u0161i\u0165 o 2: -6 + 2 = -4."}, {"q": "13. Ako zap\u00ed\u0161e\u0161 z\u00e1porn\u00e9 \u010d\u00edslo -0,045 vo vedeckom tvare?", "options": ["4,5 &times; 10<sup>-2</sup>", "-4,5 &times; 10<sup>2</sup>", "-4,5 &times; 10<sup>-2</sup>", "-45 &times; 10<sup>-3</sup>"], "answer": 2, "explanation": "Znamienko m\u00ednus zost\u00e1va pred \u010d\u00edslom. \u010ciarku posunieme o 2 miesta doprava, tak\u017ee dostaneme -4,5 a exponent je -2."}, {"q": "14. Vypo\u010d\u00edtaj a daj do spr\u00e1vneho tvaru: (2 &times; 10<sup>3</sup>) &times; (4 &times; 10<sup>5</sup>)", "options": ["8 &times; 10<sup>8</sup>", "6 &times; 10<sup>8</sup>", "8 &times; 10<sup>15</sup>", "6 &times; 10<sup>15</sup>"], "answer": 0, "explanation": "\u010c\u00edsla vyn\u00e1sob\u00edme (2 &times; 4 = 8) a exponenty pri n\u00e1soben\u00ed s\u010d\u00edtame (3 + 5 = 8). V\u00fdsledok je 8 &times; 10<sup>8</sup>."}, {"q": "15. Vypo\u010d\u00edtaj a daj do spr\u00e1vneho tvaru: (4 &times; 10<sup>4</sup>) &times; (5 &times; 10<sup>2</sup>)", "options": ["20 &times; 10<sup>6</sup>", "2 &times; 10<sup>7</sup>", "2 &times; 10<sup>6</sup>", "9 &times; 10<sup>6</sup>"], "answer": 1, "explanation": "Najprv: 4 &times; 5 = 20 a 10<sup>4</sup> &times; 10<sup>2</sup> = 10<sup>6</sup>. Z\u00e1pis 20 &times; 10<sup>6</sup> v\u0161ak nie je spr\u00e1vny. Zmen\u0161\u00edme 20 na 2 (posun o 1), exponent zv\u00e4\u010d\u0161\u00edme o 1 (6+1=7)."}, {"q": "16. Vypo\u010d\u00edtaj: (8 &times; 10<sup>6</sup>) / (2 &times; 10<sup>2</sup>)", "options": ["4 &times; 10<sup>4</sup>", "4 &times; 10<sup>3</sup>", "6 &times; 10<sup>4</sup>", "4 &times; 10<sup>8</sup>"], "answer": 0, "explanation": "\u010c\u00edsla vydel\u00edme (8 / 2 = 4) a exponenty pri delen\u00ed od\u010d\u00edtame (6 - 2 = 4). V\u00fdsledok je 4 &times; 10<sup>4</sup>."}, {"q": "17. Uprav 0,0099 &times; 10<sup>-1</sup> do vedeck\u00e9ho z\u00e1pisu.", "options": ["9,9 &times; 10<sup>-4</sup>", "9,9 &times; 10<sup>-3</sup>", "9,9 &times; 10<sup>2</sup>", "9,9 &times; 10<sup>-2</sup>"], "answer": 0, "explanation": "\u010c\u00edslo 0,0099 zv\u00e4\u010d\u0161ujeme na 9,9 (posun o 3 miesta doprava), tak\u017ee exponent zmen\u0161\u00edme o 3: -1 - 3 = -4."}, {"q": "18. Ktor\u00e9 z t\u00fdchto \u010d\u00edsel je NAJV\u00c4\u010c\u0160IE?", "options": ["9,9 &times; 10<sup>3</sup>", "1,2 &times; 10<sup>5</sup>", "4,5 &times; 10<sup>4</sup>", "980 &times; 10<sup>2</sup>"], "answer": 1, "explanation": "Pre porovnanie: 9.9e3 = 9 900. 1.2e5 = 120 000. 4.5e4 = 45 000. 980e2 = 98 000. Najv\u00e4\u010d\u0161ie je 1,2 &times; 10<sup>5</sup>."}, {"q": "19. Uprav 36 &times; 10<sup>0</sup> do vedeck\u00e9ho z\u00e1pisu.", "options": ["3,6 &times; 10<sup>1</sup>", "3,6 &times; 10<sup>-1</sup>", "3,6 &times; 10<sup>0</sup>", "360 &times; 10<sup>-1</sup>"], "answer": 0, "explanation": "\u010c\u00edslo 36 zmen\u0161ujeme na 3,6 (posun o 1 do\u013eava), tak\u017ee exponent zv\u00e4\u010d\u0161\u00edme o 1: 0 + 1 = 1."}, {"q": "20. S\u010d\u00edtaj a zvo\u013e spr\u00e1vny v\u00fdsledok: (3 &times; 10<sup>4</sup>) + (2 &times; 10<sup>3</sup>)", "options": ["5 &times; 10<sup>7</sup>", "5 &times; 10<sup>4</sup>", "3,2 &times; 10<sup>4</sup>", "3,2 &times; 10<sup>3</sup>"], "answer": 2, "explanation": "Pri s\u010d\u00edtan\u00ed musia by\u0165 exponenty rovnak\u00e9. 2 &times; 10<sup>3</sup> = 0,2 &times; 10<sup>4</sup>. Potom 3 + 0,2 = 3,2. V\u00fdsledok je 3,2 &times; 10<sup>4</sup>."}];
+        
+        let currentQuestion = 0;
+        let score = 0;
+        
+        const questionHeader = document.getElementById('questionHeader');
+        const questionText = document.getElementById('questionText');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const feedbackBox = document.getElementById('feedbackBox');
+        const nextBtn = document.getElementById('nextBtn');
+        const progressBar = document.getElementById('progressBar');
+        const quizScreen = document.getElementById('quizScreen');
+        const resultScreen = document.getElementById('resultScreen');
+
+        function loadQuestion() {
+            feedbackBox.className = 'feedback-box';
+            feedbackBox.innerHTML = '';
+            nextBtn.classList.remove('show');
+            optionsContainer.innerHTML = '';
+            
+            const q = quizData[currentQuestion];
+            questionHeader.textContent = `Otázka ${currentQuestion + 1} z ${quizData.length}`;
+            questionText.innerHTML = q.q;
+            
+            const progress = ((currentQuestion) / quizData.length) * 100;
+            progressBar.style.width = `${progress}%`;
+
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerHTML = opt;
+                btn.onclick = () => selectAnswer(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function selectAnswer(selectedIndex, selectedBtn) {
+            const q = quizData[currentQuestion];
+            const allBtns = optionsContainer.children;
+            
+            for (let i = 0; i < allBtns.length; i++) {
+                allBtns[i].disabled = true;
+                if (i === q.answer) {
+                    allBtns[i].classList.add('correct');
+                }
+            }
+
+            let isCorrect = false;
+            if (selectedIndex === q.answer) {
+                score++;
+                isCorrect = true;
+                feedbackBox.className = 'feedback-box show correct-feedback';
+                feedbackBox.innerHTML = `<b>Správne! 🎉</b> ${q.explanation}`;
+            } else {
+                selectedBtn.classList.add('incorrect');
+                feedbackBox.className = 'feedback-box show incorrect-feedback';
+                feedbackBox.innerHTML = `<b>Nesprávne.</b> ${q.explanation}`;
+            }
+
+            if (currentQuestion === quizData.length - 1) {
+                nextBtn.textContent = 'Zobraziť výsledky ➔';
+            }
+            nextBtn.classList.add('show');
+            
+            setTimeout(() => {
+                nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion < quizData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            progressBar.style.width = '100%';
+            quizScreen.style.display = 'none';
+            resultScreen.style.display = 'block';
+
+            const percentage = Math.round((score / quizData.length) * 100);
+            
+            const resultTitle = document.getElementById('resultTitle');
+            const resultMsg = document.getElementById('resultMsg');
+            
+            document.getElementById('scoreDisplay').innerHTML = `<span>${score}</span><span style="font-size: 1.2rem; opacity: 0.8">/${quizData.length}</span>`;
+
+            if (percentage >= 90) {
+                resultTitle.textContent = "Geniálne! 🚀";
+                resultMsg.textContent = "Vedecký zápis ovládaš na jednotku! Rádové posuny čiarky a práca s exponentmi ti nerobia najmenší problém.";
+            } else if (percentage >= 70) {
+                resultTitle.textContent = "Veľmi dobrá práca! 👍";
+                resultMsg.textContent = "Výborne! Sem-tam ťa síce zmiatol posun čiarky a zmena znamienka v exponente, ale väčšinu si zvládol parádne.";
+            } else if (percentage >= 50) {
+                resultTitle.textContent = "Dobrý základ. 📚";
+                resultMsg.textContent = "Pravidlá chápeš, ale pri chytákoch, kde je potrebné číslo ešte len upraviť na vedecký zápis, si treba dávať väčší pozor. Zopakuj si posúvanie čiarky!";
+            } else {
+                resultTitle.textContent = "Treba ešte potrénovať. 💡";
+                resultMsg.textContent = "Nevadí, na chybách sa učí! Najväčší pozor si daj na pravidlo: ak číslo zmenšujem (napr. 45 -> 4,5), exponent musím zväčšiť.";
+            }
+        }
+
+        loadQuestion();
+    </script>
+</body>
+</html>

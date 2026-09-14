@@ -1,0 +1,369 @@
+
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Interaktívny kvíz: Sústava SI (4 možnosti)</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --correct-bg: #dcfce7;
+            --correct-border: #22c55e;
+            --correct-text: #166534;
+            --incorrect-bg: #fee2e2;
+            --incorrect-border: #ef4444;
+            --incorrect-text: #991b1b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        
+        body, html {
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background-color: #e2e8f0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--primary);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .quiz-card {
+            background: var(--card-bg);
+            width: 100%;
+            border-radius: 16px;
+            padding: 30px 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .question-header {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .question-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option-btn {
+            background: var(--card-bg);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px 18px;
+            font-size: 1.05rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #f1f5f9;
+        }
+
+        .option-btn:disabled {
+            cursor: default;
+        }
+
+        .option-btn.correct {
+            background-color: var(--correct-bg);
+            border-color: var(--correct-border);
+            color: var(--correct-text);
+        }
+
+        .option-btn.incorrect {
+            background-color: var(--incorrect-bg);
+            border-color: var(--incorrect-border);
+            color: var(--incorrect-text);
+        }
+
+        .feedback-box {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 1rem;
+            line-height: 1.5;
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .feedback-box.show {
+            display: block;
+        }
+
+        .feedback-box.correct-feedback {
+            background-color: var(--correct-bg);
+            border-left: 5px solid var(--correct-border);
+            color: var(--correct-text);
+        }
+
+        .feedback-box.incorrect-feedback {
+            background-color: var(--incorrect-bg);
+            border-left: 5px solid var(--incorrect-border);
+            color: var(--incorrect-text);
+        }
+
+        .feedback-box b {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 1.1rem;
+        }
+
+        .action-btn {
+            margin-top: 20px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            width: 100%;
+            display: none;
+        }
+
+        .action-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .action-btn.show {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .result-screen {
+            text-align: center;
+            display: none;
+        }
+
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: 800;
+            margin: 0 auto 30px auto;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+        }
+
+        .result-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+        }
+
+        .result-msg {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 600px) {
+            .app-container { padding: 10px; }
+            .quiz-card { padding: 20px 15px; }
+            .question-text { font-size: 1.2rem; }
+            .option-btn { font-size: 0.95rem; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="app-container">
+        
+        <div class="quiz-card" id="quizScreen">
+            <div class="question-header" id="questionHeader">Otázka 1 / 20</div>
+            <div class="question-text" id="questionText">Otázka sa načítava...</div>
+            
+            <div class="options-container" id="optionsContainer">
+            </div>
+
+            <div class="feedback-box" id="feedbackBox"></div>
+
+            <button class="action-btn" id="nextBtn" onclick="nextQuestion()">Ďalšia otázka ➔</button>
+        </div>
+
+        <div class="quiz-card result-screen" id="resultScreen">
+            <div class="score-circle" id="scoreDisplay">0%</div>
+            <div class="result-title" id="resultTitle">Vyhodnotenie</div>
+            <div class="result-msg" id="resultMsg">Správa</div>
+            <button class="action-btn show" onclick="location.reload()">Spustiť kvíz znova</button>
+        </div>
+
+    </div>
+
+    <script>
+        const quizData = [{"q": "1. Ko\u013eko z\u00e1kladn\u00fdch fyzik\u00e1lnych veli\u010d\u00edn definuje s\u00fastava SI?", "options": ["5", "7", "9", "11"], "answer": 1, "explanation": "S\u00fastava SI je postaven\u00e1 presne na 7 z\u00e1kladn\u00fdch veli\u010din\u00e1ch (d\u013a\u017eka, hmotnos\u0165, \u010das, el. pr\u00fad, termodynamick\u00e1 teplota, l\u00e1tkov\u00e9 mno\u017estvo, svietivos\u0165). V\u0161etky ostatn\u00e9 s\u00fa z nich odvoden\u00e9."}, {"q": "2. Ak\u00e1 je z\u00e1kladn\u00e1 jednotka hmotnosti v s\u00fastave SI?", "options": ["gram (g)", "kilogram (kg)", "tona (t)", "miligram (mg)"], "answer": 1, "explanation": "Toto je \u010dast\u00e1 chyba! Aj ke\u010f m\u00e1 predponu 'kilo-', kilogram je historicky jedinou z\u00e1kladnou jednotkou SI, ktor\u00e1 u\u017e obsahuje predponu. Gram je jej diel a tona je ved\u013eaj\u0161ia (povolen\u00e1) jednotka."}, {"q": "3. Ktor\u00e1 z nasleduj\u00facich veli\u010d\u00edn patr\u00ed medzi z\u00e1kladn\u00e9 veli\u010diny SI?", "options": ["Elektrick\u00e9 nap\u00e4tie", "Elektrick\u00fd odpor", "Elektrick\u00fd pr\u00fad", "Elektrick\u00fd n\u00e1boj"], "answer": 2, "explanation": "Elektrick\u00fd pr\u00fad je z\u00e1kladn\u00e1 veli\u010dina (jednotka Amp\u00e9r). Nap\u00e4tie (Volt), odpor (Ohm) aj n\u00e1boj (Coulomb) s\u00fa u\u017e odvoden\u00e9 veli\u010diny."}, {"q": "4. Ak\u00e1 je z\u00e1kladn\u00e1 jednotka termodynamickej teploty?", "options": ["Stupe\u0148 Celzia (\u00b0C)", "Kelvin (K)", "Stupe\u0148 Fahrenheita (\u00b0F)", "Joule (J)"], "answer": 1, "explanation": "Z\u00e1kladnou jednotkou je Kelvin (K). Stupnica Celzia sa be\u017ene pou\u017e\u00edva a pova\u017euje sa za odvoden\u00fa jednotku, no vo fyzik\u00e1lnych v\u00fdpo\u010dtoch stavov\u00fdch rovn\u00edc mus\u00edme po\u010d\u00edta\u0165 v Kelvinoch."}, {"q": "5. Do akej kateg\u00f3rie patr\u00ed liter (l alebo L)?", "options": ["Z\u00e1kladn\u00e1 jednotka", "Odvoden\u00e1 jednotka", "Ved\u013eaj\u0161ia (povolen\u00e1) jednotka", "Doplnkov\u00e1 jednotka"], "answer": 2, "explanation": "Liter nepatr\u00ed striktne do s\u00fastavy SI (odvoden\u00e1 jednotka objemu je m\u00b3). Je to v\u0161ak ved\u013eaj\u0161ia jednotka, ktorej pou\u017e\u00edvanie je vo fyzike a be\u017enom \u017eivote ofici\u00e1lne povolen\u00e9."}, {"q": "6. \u010co meria z\u00e1kladn\u00e1 jednotka kandela (cd)?", "options": ["Svietivos\u0165", "Osvetlenie", "Sveteln\u00fd tok", "\u017diarivos\u0165"], "answer": 0, "explanation": "Kandela je z\u00e1kladn\u00e1 jednotka pre svietivos\u0165. Osvetlenie (lux) a sveteln\u00fd tok (lumen) s\u00fa u\u017e odvoden\u00e9 od kandely."}, {"q": "7. Ak\u00e1 je z\u00e1kladn\u00e1 jednotka pre veli\u010dinu l\u00e1tkov\u00e9 mno\u017estvo?", "options": ["po\u010det \u010dast\u00edc (N)", "m\u00f3l (mol)", "gram na m\u00f3l (g/mol)", "Dalton (Da)"], "answer": 1, "explanation": "L\u00e1tkov\u00e9 mno\u017estvo sa meria v m\u00f3loch. Vyjadruje presn\u00fd po\u010det element\u00e1rnych ent\u00edt (\u010dast\u00edc), \u010do je ve\u013emi d\u00f4le\u017eit\u00e9 v molekulovej fyzike a ch\u00e9mii."}, {"q": "8. Ktor\u00e9 jednotky v minulosti tvorili kateg\u00f3riu tzv. 'doplnkov\u00fdch jednotiek'?", "options": ["radi\u00e1n a steradi\u00e1n", "hodina a min\u00fata", "joule a watt", "liter a tona"], "answer": 0, "explanation": "Radi\u00e1n (rovinn\u00fd uhol) a steradi\u00e1n (priestorov\u00fd uhol) boli kedysi samostatnou kateg\u00f3riou. Nesk\u00f4r sa vedci zhodli, \u017ee ide vlastne o bezrozmern\u00e9 odvoden\u00e9 jednotky."}, {"q": "9. Veli\u010dina 'r\u00fdchlos\u0165' patr\u00ed medzi:", "options": ["Z\u00e1kladn\u00e9 veli\u010diny", "Odvoden\u00e9 veli\u010diny", "Doplnkov\u00e9 veli\u010diny", "Ved\u013eaj\u0161ie veli\u010diny"], "answer": 1, "explanation": "R\u00fdchlos\u0165 si mus\u00edme vypo\u010d\u00edta\u0165 (dr\u00e1ha delen\u00e1 \u010dasom). Ke\u010f\u017ee vznik\u00e1 kombin\u00e1ciou dvoch z\u00e1kladn\u00fdch veli\u010d\u00edn (d\u013a\u017eky a \u010dasu), je to odvoden\u00e1 veli\u010dina."}, {"q": "10. Ak\u00fd je princ\u00edp tvorby odvoden\u00fdch jednotiek?", "options": ["S\u010d\u00edtan\u00edm a od\u010d\u00edtan\u00edm z\u00e1kladn\u00fdch jednotiek", "Prid\u00e1van\u00edm predp\u00f4n k z\u00e1kladn\u00fdm jednotk\u00e1m", "N\u00e1soben\u00edm a delen\u00edm z\u00e1kladn\u00fdch jednotiek", "Medzin\u00e1rodnou dohodou bez pou\u017eitia vzorcov"], "answer": 2, "explanation": "Odvoden\u00e9 jednotky kop\u00edruj\u00fa fyzik\u00e1lne vzorce. Ak je r\u00fdchlos\u0165 dr\u00e1ha delen\u00e1 \u010dasom (v = s/t), jednotka je meter delen\u00fd sekundou (m/s)."}, {"q": "11. Patr\u00ed Newton (N) medzi z\u00e1kladn\u00e9 jednotky?", "options": ["\u00c1no, je to z\u00e1kladn\u00e1 jednotka sily.", "Nie, je to odvoden\u00e1 jednotka.", "Nie, je to ved\u013eaj\u0161ia jednotka.", "Nie, patr\u00ed medzi doplnkov\u00e9 jednotky."], "answer": 1, "explanation": "Sila (Newton) je odvoden\u00e1. Pod\u013ea 2. Newtonovho z\u00e1kona (F = m*a) sa Newton sklad\u00e1 zo z\u00e1kladn\u00fdch jednotiek: 1 N = 1 kg\u00b7m/s\u00b2."}, {"q": "12. Ktor\u00e1 z nasleduj\u00facich jednotiek \u010dasu je Z\u00c1KLADNOU jednotkou SI?", "options": ["Sekunda (s)", "Min\u00fata (min)", "Hodina (h)", "De\u0148 (d)"], "answer": 0, "explanation": "Iba sekunda je z\u00e1kladn\u00e1 jednotka. Min\u00fata, hodina aj de\u0148 s\u00fa tzv. ved\u013eaj\u0161ie (povolen\u00e9) jednotky."}, {"q": "13. Tlak sa meria v Pascaloch (Pa). Pascal je z h\u013eadiska SI:", "options": ["Z\u00e1kladn\u00e1 jednotka", "Odvoden\u00e1 jednotka", "Doplnkov\u00e1 jednotka", "Ved\u013eaj\u0161ia jednotka"], "answer": 1, "explanation": "Tlak je sila p\u00f4sobiaca na plochu (p = F/S). Preto je Pascal odvoden\u00e1 jednotka (N/m\u00b2)."}, {"q": "14. Je tona (t) ofici\u00e1lnou s\u00fa\u010das\u0165ou s\u00fastavy SI?", "options": ["\u00c1no, je to z\u00e1kladn\u00e1 jednotka.", "\u00c1no, ale je to ved\u013eaj\u0161ia (povolen\u00e1) jednotka.", "Nie, v modernej fyzike sa v\u00f4bec nepou\u017e\u00edva.", "\u00c1no, je to odvoden\u00e1 jednotka hmotnosti."], "answer": 1, "explanation": "Podobne ako liter alebo hodina, aj tona (1000 kg) je z praktick\u00fdch d\u00f4vodov povolen\u00e1 na pou\u017e\u00edvanie spolu so z\u00e1kladn\u00fdmi a odvoden\u00fdmi jednotkami SI."}, {"q": "15. Ak\u00fa veli\u010dinu meriame v Amp\u00e9roch (A)?", "options": ["Elektrick\u00fd pr\u00fad", "Elektrick\u00fd n\u00e1boj", "Elektrick\u00fa pr\u00e1cu", "Elektrick\u00fd v\u00fdkon"], "answer": 0, "explanation": "Amp\u00e9r je z\u00e1kladn\u00e1 jednotka SI ur\u010duj\u00faca ve\u013ekos\u0165 elektrick\u00e9ho pr\u00fadu. Elektrick\u00fd n\u00e1boj (Coulomb) je u\u017e odvoden\u00fd (1 C = 1 A * 1 s)."}, {"q": "16. Odvoden\u00e1 jednotka Hertz (Hz) sa pou\u017e\u00edva pre veli\u010dinu:", "options": ["Energia", "V\u00fdkon", "Frekvencia", "Tlak"], "answer": 2, "explanation": "Hertz meria frekvenciu (po\u010det dejov za sekundu). Je to odvoden\u00e1 jednotka, ktor\u00e1 v z\u00e1kladn\u00fdch jednotk\u00e1ch zodpoved\u00e1 s\u207b\u00b9 (1/s)."}, {"q": "17. Veli\u010dina 'plocha' (obsah) je:", "options": ["Z\u00e1kladn\u00e1 veli\u010dina", "Odvoden\u00e1 veli\u010dina", "Doplnkov\u00e1 veli\u010dina", "Ved\u013eaj\u0161ia veli\u010dina"], "answer": 1, "explanation": "Plochu po\u010d\u00edtame vyn\u00e1soben\u00edm dvoch d\u013a\u017eok (napr. a * b). Ke\u010f\u017ee ju z\u00edskavame zo z\u00e1kladnej veli\u010diny d\u013a\u017eka, je odvoden\u00e1 (m\u00b2)."}, {"q": "18. Ktor\u00e1 z t\u00fdchto mo\u017enost\u00ed obsahuje LEN z\u00e1kladn\u00e9 jednotky SI?", "options": ["meter, kilogram, sekunda", "meter, gram, sekunda", "newton, joule, watt", "kelvin, liter, m\u00f3l"], "answer": 0, "explanation": "Meter, kilogram a sekunda s\u00fa piliere mechaniky v SI (tzv. m-k-s syst\u00e9m). Daj si pozor na gram, ten nie je z\u00e1kladnou jednotkou."}, {"q": "19. De\u0148 (d) ako jednotka \u010dasu patr\u00ed medzi:", "options": ["Z\u00e1kladn\u00e9 jednotky", "Odvoden\u00e9 jednotky", "Ved\u013eaj\u0161ie (povolen\u00e9) jednotky", "Nez\u00e1konn\u00e9 jednotky"], "answer": 2, "explanation": "Z\u00e1kladn\u00e1 je iba sekunda. De\u0148 je historick\u00e1 a praktick\u00e1 jednotka odvoden\u00e1 od rot\u00e1cie Zeme, preto je v SI len 'povolen\u00e1'."}, {"q": "20. \u010co meria fyzik\u00e1lna veli\u010dina priestorov\u00fd uhol?", "options": ["Vykrojen\u00fa \u010das\u0165 priestoru (v steradi\u00e1noch)", "Uhol v rovine (v radi\u00e1noch)", "Zorn\u00e9 pole (v stup\u0148och)", "Odklon sveteln\u00e9ho l\u00fa\u010da (v dioptri\u00e1ch)"], "answer": 0, "explanation": "Priestorov\u00fd uhol vyjadruje, ak\u00fa \u010das\u0165 priestoru zaber\u00e1 objekt pri poh\u013eade z dan\u00e9ho bodu. Kedysi mal doplnkov\u00fa jednotku steradi\u00e1n (sr)."}];
+        
+        let currentQuestion = 0;
+        let score = 0;
+        
+        const questionHeader = document.getElementById('questionHeader');
+        const questionText = document.getElementById('questionText');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const feedbackBox = document.getElementById('feedbackBox');
+        const nextBtn = document.getElementById('nextBtn');
+        const progressBar = document.getElementById('progressBar');
+        const quizScreen = document.getElementById('quizScreen');
+        const resultScreen = document.getElementById('resultScreen');
+
+        function loadQuestion() {
+            feedbackBox.className = 'feedback-box';
+            feedbackBox.innerHTML = '';
+            nextBtn.classList.remove('show');
+            optionsContainer.innerHTML = '';
+            
+            const q = quizData[currentQuestion];
+            questionHeader.textContent = `Otázka ${currentQuestion + 1} z ${quizData.length}`;
+            questionText.textContent = q.q;
+            
+            const progress = ((currentQuestion) / quizData.length) * 100;
+            progressBar.style.width = `${progress}%`;
+
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = opt;
+                btn.onclick = () => selectAnswer(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function selectAnswer(selectedIndex, selectedBtn) {
+            const q = quizData[currentQuestion];
+            const allBtns = optionsContainer.children;
+            
+            for (let i = 0; i < allBtns.length; i++) {
+                allBtns[i].disabled = true;
+                if (i === q.answer) {
+                    allBtns[i].classList.add('correct');
+                }
+            }
+
+            let isCorrect = false;
+            if (selectedIndex === q.answer) {
+                score++;
+                isCorrect = true;
+                feedbackBox.className = 'feedback-box show correct-feedback';
+                feedbackBox.innerHTML = `<b>Správne! 🎉</b> ${q.explanation}`;
+            } else {
+                selectedBtn.classList.add('incorrect');
+                feedbackBox.className = 'feedback-box show incorrect-feedback';
+                feedbackBox.innerHTML = `<b>Nesprávne.</b> ${q.explanation}`;
+            }
+
+            if (currentQuestion === quizData.length - 1) {
+                nextBtn.textContent = 'Zobraziť výsledky ➔';
+            }
+            nextBtn.classList.add('show');
+            
+            setTimeout(() => {
+                nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion < quizData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            progressBar.style.width = '100%';
+            quizScreen.style.display = 'none';
+            resultScreen.style.display = 'block';
+
+            const percentage = Math.round((score / quizData.length) * 100);
+            
+            const resultTitle = document.getElementById('resultTitle');
+            const resultMsg = document.getElementById('resultMsg');
+            
+            document.getElementById('scoreDisplay').innerHTML = `<span>${score}</span><span style="font-size: 1.2rem; opacity: 0.8">/${quizData.length}</span>`;
+
+            if (percentage >= 90) {
+                resultTitle.textContent = "Fantastický výkon! 🏆";
+                resultMsg.textContent = "Sústavu SI a fyzikálne veličiny máš v malíčku. Výborne zvládnutá teória!";
+            } else if (percentage >= 70) {
+                resultTitle.textContent = "Veľmi dobrá práca! 👍";
+                resultMsg.textContent = "Väčšinu chytákov si zvládol, aj keď sem-tam ťa nejaká definícia ešte prekvapí. Dobrá práca.";
+            } else if (percentage >= 50) {
+                resultTitle.textContent = "Dobrý základ. 📚";
+                resultMsg.textContent = "Máš dobrý prehľad, ale niektoré miskoncepcie (napr. rozdiel medzi základnou a vedľajšou jednotkou) si treba ešte zopakovať.";
+            } else {
+                resultTitle.textContent = "Treba ešte potrénovať. 💡";
+                resultMsg.textContent = "Tento kvíz bol náročný na presné definície. Prejdi si ešte raz vysvetlenia k otázkam, ktoré ti robili problém.";
+            }
+        }
+
+        loadQuestion();
+    </script>
+</body>
+</html>
