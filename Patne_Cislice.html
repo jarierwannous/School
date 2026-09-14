@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kvíz: Platné číslice a operácie s nimi</title>
+    <style>
+        :root {
+            --primary: #f59e0b; /* Amber/Orange color for distinctiveness */
+            --primary-hover: #d97706;
+            --bg-color: #fffbeb;
+            --card-bg: #ffffff;
+            --text-main: #334155;
+            --text-muted: #64748b;
+            --correct-bg: #dcfce7;
+            --correct-border: #22c55e;
+            --correct-text: #166534;
+            --incorrect-bg: #fee2e2;
+            --incorrect-border: #ef4444;
+            --incorrect-text: #991b1b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body, html { height: 100%; background-color: var(--bg-color); color: var(--text-main); display: flex; flex-direction: column; }
+        .progress-container { width: 100%; height: 6px; background-color: #fde68a; position: fixed; top: 0; left: 0; z-index: 10; }
+        .progress-bar { height: 100%; background-color: var(--primary); width: 0%; transition: width 0.4s ease; }
+        .app-container { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; width: 100%; max-width: 800px; margin: 0 auto; }
+        .quiz-card { background: var(--card-bg); width: 100%; border-radius: 16px; padding: 30px 25px; box-shadow: 0 10px 25px rgba(245, 158, 11, 0.1); display: flex; flex-direction: column; max-height: 90vh; overflow-y: auto; }
+        .question-header { font-size: 0.9rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
+        .question-text { font-size: 1.3rem; font-weight: 700; margin-bottom: 25px; line-height: 1.4; }
+        .options-container { display: flex; flex-direction: column; gap: 10px; }
+        .option-btn { background: var(--card-bg); border: 2px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; font-size: 1.05rem; text-align: left; cursor: pointer; transition: all 0.2s ease; color: var(--text-main); font-weight: 500; }
+        .option-btn:hover:not(:disabled) { border-color: var(--primary); background-color: #fef3c7; }
+        .option-btn:disabled { cursor: default; }
+        .option-btn.correct { background-color: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-text); }
+        .option-btn.incorrect { background-color: var(--incorrect-bg); border-color: var(--incorrect-border); color: var(--incorrect-text); }
+        .feedback-box { margin-top: 20px; padding: 16px; border-radius: 12px; font-size: 1rem; line-height: 1.5; display: none; animation: fadeIn 0.4s ease; }
+        .feedback-box.show { display: block; }
+        .feedback-box.correct-feedback { background-color: var(--correct-bg); border-left: 5px solid var(--correct-border); color: var(--correct-text); }
+        .feedback-box.incorrect-feedback { background-color: var(--incorrect-bg); border-left: 5px solid var(--incorrect-border); color: var(--incorrect-text); }
+        .feedback-box b { display: block; margin-bottom: 6px; font-size: 1.1rem; }
+        .action-btn { margin-top: 20px; background-color: var(--primary); color: white; border: none; border-radius: 12px; padding: 16px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: background 0.2s ease; width: 100%; display: none; }
+        .action-btn:hover { background-color: var(--primary-hover); }
+        .action-btn.show { display: block; animation: fadeIn 0.4s ease; }
+        .result-screen { text-align: center; display: none; }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 800; margin: 0 auto 30px auto; box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3); }
+        .result-title { font-size: 2rem; font-weight: 800; margin-bottom: 15px; }
+        .result-msg { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 30px; line-height: 1.5; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 600px) { .app-container { padding: 10px; } .quiz-card { padding: 20px 15px; } .question-text { font-size: 1.2rem; } .option-btn { font-size: 0.95rem; padding: 12px 14px; } }
+    </style>
+</head>
+<body>
+    <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="app-container">
+        <div class="quiz-card" id="quizScreen">
+            <div class="question-header" id="questionHeader">Otázka 1 / 20</div>
+            <div class="question-text" id="questionText">Otázka sa načítava...</div>
+            <div class="options-container" id="optionsContainer"></div>
+            <div class="feedback-box" id="feedbackBox"></div>
+            <button class="action-btn" id="nextBtn" onclick="nextQuestion()">Ďalšia otázka ➔</button>
+        </div>
+        <div class="quiz-card result-screen" id="resultScreen">
+            <div class="score-circle" id="scoreDisplay">0%</div>
+            <div class="result-title" id="resultTitle">Vyhodnotenie</div>
+            <div class="result-msg" id="resultMsg">Správa</div>
+            <button class="action-btn show" onclick="location.reload()">Spustiť kvíz znova</button>
+        </div>
+    </div>
+    <script>
+        const quizData = [{"q": "1. Koľko platných číslic má číslo 0,0045?", "options": ["2", "3", "4", "5"], "answer": 0, "explanation": "Nuly na začiatku čísla (pred prvou nenulovou číslicou) nikdy nie sú platné. Platné sú iba číslice 4 a 5."}, {"q": "2. Koľko platných číslic má číslo 3,005?", "options": ["2", "3", "4", "5"], "answer": 2, "explanation": "Nuly nachádzajúce sa medzi dvoma nenulovými číslicami sú vždy platné. Číslo má teda 4 platné číslice (3, 0, 0, 5)."}, {"q": "3. Koľko platných číslic má číslo 15,00?", "options": ["2", "3", "4", "Nekonečne veľa"], "answer": 2, "explanation": "Nuly na konci čísla, ktoré sa nachádzajú za desatinnou čiarkou, sú platné. Vyjadrujú presnosť merania. Číslo má 4 platné číslice."}, {"q": "4. Koľko platných číslic má presné číslo (napr. počet 5 žiakov alebo konštanta 2 vo vzorci d = 2r)?", "options": ["1", "2", "0", "Nekonečne veľa"], "answer": 3, "explanation": "Presné čísla (získané počítaním kusov alebo definované konštanty) majú z hľadiska výpočtov nekonečne veľa platných číslic a neovplyvňujú zaokrúhľovanie výsledku."}, {"q": "5. Koľko platných číslic má číslo 0,05020?", "options": ["3", "4", "5", "6"], "answer": 1, "explanation": "Úvodné nuly neplatia. Platí prvá 5, nula medzi (0), dvojka (2) a nula na konci za desatinnou čiarkou (0). Spolu 4 platné číslice."}, {"q": "6. Zaokrúhli číslo 3,456 na 3 platné číslice.", "options": ["3,45", "3,46", "3,50", "3,456"], "answer": 1, "explanation": "Tretia platná číslica je 5. Ďalšia číslica je 6, čo znamená, že musíme zaokrúhliť nahor na 3,46."}, {"q": "7. Zaokrúhli číslo 0,002345 na 2 platné číslice.", "options": ["0,0023", "0,0024", "0,00", "0,00235"], "answer": 0, "explanation": "Prvé dve platné číslice sú 2 a 3. Nasleduje 4, takže zaokrúhľujeme nadol (zostáva 3). Výsledok je 0,0023."}, {"q": "8. Zaokrúhli číslo 9,999 na 3 platné číslice.", "options": ["9,99", "10,0", "10", "9,999"], "answer": 1, "explanation": "Tretia platná číslica je druhá deviatka (9,99). Ďalšia je 9, takže zaokrúhlime nahor. Z 9,99 sa stane 10,0 (musíme zapísať nulu, aby sme mali 3 platné číslice)."}, {"q": "9. Zaokrúhli číslo 12 500 na 2 platné číslice (využi vedecký zápis).", "options": ["1,2 &times; 10<sup>4</sup>", "1,3 &times; 10<sup>4</sup>", "12 &times; 10<sup>3</sup>", "13 &times; 10<sup>2</sup>"], "answer": 1, "explanation": "Číslo prepíšeme ako 1,2500 &times; 10^4. Prvé dve platné číslice sú 1 a 2. Za nimi je 5, takže zaokrúhľujeme nahor na 1,3. Výsledok: 1,3 &times; 10<sup>4</sup>."}, {"q": "10. Aké je základné pravidlo pre SČÍTANIE a ODČÍTANIE?", "options": ["Výsledok má toľko platných číslic ako číslo s najmenším počtom platných číslic.", "Výsledok má toľko desatinných miest ako číslo s najmenším počtom desatinných miest.", "Výsledok sa nezaokrúhľuje.", "Výsledok má toľko platných číslic ako číslo s najväčším počtom platných číslic."], "answer": 1, "explanation": "Pri sčítaní a odčítaní nerozhoduje celkový počet platných číslic, ale iba počet desatinných miest. Výsledok prispôsobujeme najmenej presnému číslu (najmenej desatinných miest)."}, {"q": "11. Vypočítaj a správne zaokrúhli: 12,11 + 2,0", "options": ["14,11", "14,1", "14", "14,110"], "answer": 1, "explanation": "Číslo 12,11 má 2 desatinné miesta. Číslo 2,0 má 1 desatinné miesto. Výsledok (14,11) musíme zaokrúhliť na 1 desatinné miesto, teda na 14,1."}, {"q": "12. Vypočítaj a správne zaokrúhli: 15,5 - 0,123", "options": ["15,377", "15,38", "15,4", "15"], "answer": 2, "explanation": "Číslo 15,5 má len 1 desatinné miesto. Presný výsledok 15,377 musíme zaokrúhliť na 1 desatinné miesto, čo nám dá 15,4."}, {"q": "13. Vypočítaj a správne zaokrúhli: 100,0 + 0,005", "options": ["100,005", "100,01", "100,0", "100"], "answer": 2, "explanation": "Číslo 100,0 má 1 desatinné miesto, takže aj výsledok musí mať 1 desatinné miesto. Matematický výsledok 100,005 zaokrúhlime na 100,0."}, {"q": "14. Aké je základné pravidlo pre NÁSOBENIE a DELENIE?", "options": ["Výsledok má toľko desatinných miest ako číslo s najmenším počtom desatinných miest.", "Výsledok má toľko platných číslic ako číslo s najmenším počtom platných číslic.", "Výsledok má toľko platných číslic ako číslo s najväčším počtom platných číslic.", "Určuje sa to vždy len podľa prvého čísla v príklade."], "answer": 1, "explanation": "Pri násobení a delení už nezáleží na desatinných miestach. Výsledok sa zaokrúhľuje tak, aby mal rovnaký počet platných číslic ako číslo v zadaní, ktoré ich malo najmenej."}, {"q": "15. Vypočítaj a správne zaokrúhli: 2,5 &times; 3,42", "options": ["8,55", "8,6", "8,5", "9"], "answer": 1, "explanation": "Číslo 2,5 (2 platné číslice) &times; 3,42 (3 platné číslice). Výsledok musí mať 2 platné číslice. Matematický výsledok 8,55 zaokrúhlime nahor na 8,6."}, {"q": "16. Vypočítaj a správne zaokrúhli: 10,0 / 3,0", "options": ["3,333", "3,33", "3,3", "3"], "answer": 2, "explanation": "10,0 (3 platné číslice) / 3,0 (2 platné číslice). Výsledok musí mať 2 platné číslice. 3,3333... zaokrúhlime na 3,3."}, {"q": "17. Vypočítaj a správne zaokrúhli: 0,050 &times; 100,0", "options": ["5", "5,0", "5,00", "5,000"], "answer": 1, "explanation": "0,050 má 2 platné číslice. 100,0 má 4 platné číslice. Výsledok musí mať 2 platné číslice. Presný výsledok je 5, ale pre zachovanie 2 platných číslic ho musíme zapísať ako 5,0."}, {"q": "18. Ktoré z nasledujúcich čísel má presne 3 platné číslice?", "options": ["0,03", "0,030", "0,0300", "3000"], "answer": 2, "explanation": "0,03 má jednu (3). 0,030 má dve (3, 0). 0,0300 má tri (3, 0, 0). Číslo 3000 má bez desatinnej čiarky nejednoznačný počet (zvyčajne len 1 platnú číslicu)."}, {"q": "19. Žiak vypočítal hustotu kocky: m = 12,4 g, V = 2,0 cm<sup>3</sup>. Ako má správne zapísať výsledok hustoty (m/V)?", "options": ["6,2 g/cm<sup>3</sup>", "6,20 g/cm<sup>3</sup>", "6 g/cm<sup>3</sup>", "6,200 g/cm<sup>3</sup>"], "answer": 0, "explanation": "Hmotnosť (3 platné číslice), objem (2 platné číslice). Výsledok delenia musí mať 2 platné číslice. 12,4 / 2,0 = 6,2, čo sú presne 2 platné číslice."}, {"q": "20. Zložený príklad: (2,00 &times; 3,0) + 1,2. (Najprv vynásob, zaokrúhli, potom sčítaj a zaokrúhli).", "options": ["7,2", "7,20", "7", "7,0"], "answer": 0, "explanation": "Násobenie: 2,00 (3 PČ) * 3,0 (2 PČ) = 6,0 (2 PČ a 1 desatinné miesto). Sčítanie: 6,0 (1 des. miesto) + 1,2 (1 des. miesto) = 7,2 (1 desatinné miesto)."}];
+        let currentQuestion = 0; let score = 0;
+        const questionHeader = document.getElementById('questionHeader');
+        const questionText = document.getElementById('questionText');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const feedbackBox = document.getElementById('feedbackBox');
+        const nextBtn = document.getElementById('nextBtn');
+        const progressBar = document.getElementById('progressBar');
+        const quizScreen = document.getElementById('quizScreen');
+        const resultScreen = document.getElementById('resultScreen');
+
+        function loadQuestion() {
+            feedbackBox.className = 'feedback-box'; feedbackBox.innerHTML = '';
+            nextBtn.classList.remove('show'); optionsContainer.innerHTML = '';
+            const q = quizData[currentQuestion];
+            questionHeader.textContent = `Otázka ${currentQuestion + 1} z ${quizData.length}`;
+            questionText.innerHTML = q.q;
+            progressBar.style.width = `${((currentQuestion) / quizData.length) * 100}%`;
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn'; btn.innerHTML = opt;
+                btn.onclick = () => selectAnswer(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function selectAnswer(selectedIndex, selectedBtn) {
+            const q = quizData[currentQuestion]; const allBtns = optionsContainer.children;
+            for (let i = 0; i < allBtns.length; i++) {
+                allBtns[i].disabled = true;
+                if (i === q.answer) allBtns[i].classList.add('correct');
+            }
+            if (selectedIndex === q.answer) {
+                score++;
+                feedbackBox.className = 'feedback-box show correct-feedback';
+                feedbackBox.innerHTML = `<b>Správne! 🎉</b> ${q.explanation}`;
+            } else {
+                selectedBtn.classList.add('incorrect');
+                feedbackBox.className = 'feedback-box show incorrect-feedback';
+                feedbackBox.innerHTML = `<b>Nesprávne.</b> ${q.explanation}`;
+            }
+            if (currentQuestion === quizData.length - 1) nextBtn.textContent = 'Zobraziť výsledky ➔';
+            nextBtn.classList.add('show');
+            setTimeout(() => nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion < quizData.length) loadQuestion(); else showResults();
+        }
+
+        function showResults() {
+            progressBar.style.width = '100%'; quizScreen.style.display = 'none'; resultScreen.style.display = 'block';
+            const percentage = Math.round((score / quizData.length) * 100);
+            document.getElementById('scoreDisplay').innerHTML = `<span>${score}</span><span style="font-size: 1.2rem; opacity: 0.8">/${quizData.length}</span>`;
+            document.getElementById('resultTitle').textContent = percentage >= 90 ? "Excelentne! 🏆" : percentage >= 70 ? "Veľmi dobrá práca! 👍" : percentage >= 50 ? "Dobrý základ. 📚" : "Treba ešte potrénovať. 💡";
+            document.getElementById('resultMsg').textContent = percentage >= 90 ? "Pravidlá platných číslic máš v malíčku. Rozlišovanie medzi sčítaním a násobením ti nerobí žiaden problém!" : percentage >= 70 ? "Väčšinu pravidiel pre platné číslice a zaokrúhľovanie ovládaš veľmi dobre." : percentage >= 50 ? "Základy chápeš, ale treba si dávať väčší pozor na rozdiel medzi počtom platných číslic a počtom desatinných miest pri rôznych matematických operáciách." : "Zopakuj si pravidlá! Najdôležitejšie je pamätať si: sčítanie/odčítanie = desatinné miesta; násobenie/delenie = počet platných číslic.";
+        }
+        loadQuestion();
+    </script>
+</body>
+</html>
