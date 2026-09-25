@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Moment zotrvačnosti z energie</title>
+<style>
+  :root{
+    --bg:#f5f7fb;
+    --panel:#ffffff;
+    --ink:#172033;
+    --muted:#64748b;
+    --line:#dbe3ef;
+    --accent:#2563eb;
+    --accent2:#0f766e;
+    --warm:#b45309;
+    --danger:#b91c1c;
+    --shadow:0 14px 40px rgba(15,23,42,.08);
+    --radius:22px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+  body{display:flex;justify-content:center}
+  button,input,select{font:inherit}
+  .app{width:min(1500px,100%);min-height:100vh;padding:18px 18px 92px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+  .title-wrap h1{margin:0;font-size:clamp(1.35rem,2vw,2rem);letter-spacing:-.02em}
+  .title-wrap p{margin:4px 0 0;color:var(--muted)}
+  .transport{display:flex;gap:8px;align-items:center}
+  .icon-btn,.step-btn,.ghost-btn{
+    border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:9px 12px;cursor:pointer;
+    box-shadow:0 2px 8px rgba(15,23,42,.04)
+  }
+  .icon-btn:hover,.step-btn:hover,.ghost-btn:hover{border-color:#b7c6db}
+  .icon-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .main{display:grid;grid-template-columns:minmax(520px,1.35fr) minmax(360px,.85fr);gap:16px;align-items:start}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .sim-card{padding:16px;overflow:hidden}
+  .controls-card{padding:18px}
+  .sim-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:8px}
+  .sim-head h2,.controls-card h2{margin:0;font-size:1.12rem}
+  .sim-head p{margin:4px 0 0;color:var(--muted);font-size:.92rem}
+  .badge{font-size:.78rem;font-weight:700;background:#e8efff;color:#1746a2;padding:6px 9px;border-radius:999px;white-space:nowrap}
+  .stage-wrap{position:relative;aspect-ratio:16/10;min-height:420px;border-radius:18px;overflow:hidden;background:
+    radial-gradient(circle at 50% 46%,rgba(37,99,235,.055),rgba(37,99,235,0) 44%),
+    linear-gradient(#fbfdff,#f3f7fb);
+    border:1px solid #e6edf6;
+  }
+  svg{display:block;width:100%;height:100%}
+  .center-note{position:absolute;left:14px;bottom:12px;background:rgba(255,255,255,.9);backdrop-filter:blur(8px);padding:8px 10px;border:1px solid var(--line);border-radius:12px;font-size:.82rem;color:var(--muted)}
+  .readouts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+  .readout{border:1px solid var(--line);border-radius:14px;padding:10px;background:#fbfdff}
+  .readout .k{font-size:.76rem;color:var(--muted);margin-bottom:3px}
+  .readout .v{font-weight:750;font-variant-numeric:tabular-nums}
+  .section{padding:14px 0;border-bottom:1px solid #edf1f6}
+  .section:first-of-type{padding-top:8px}
+  .section:last-child{border-bottom:0;padding-bottom:0}
+  .section-title{font-size:.82rem;font-weight:800;color:#334155;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+  .ctrl{margin:10px 0}
+  .ctrl-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-bottom:6px}
+  .ctrl-row label{font-weight:650;font-size:.92rem}
+  .value-pill{font-variant-numeric:tabular-nums;background:#f1f5f9;border:1px solid #e2e8f0;padding:3px 8px;border-radius:999px;font-size:.82rem;min-width:62px;text-align:center}
+  input[type="range"]{width:100%;accent-color:var(--accent)}
+  .hint{font-size:.8rem;color:var(--muted);line-height:1.4}
+  .ball-list{display:grid;gap:8px;max-height:255px;overflow:auto;padding-right:2px}
+  .ball-row{display:grid;grid-template-columns:34px 1fr 86px;gap:8px;align-items:center;border:1px solid var(--line);border-radius:13px;padding:8px;background:#fbfdff}
+  .ball-row.scene2{grid-template-columns:34px 1fr 85px 110px}
+  .dot{width:18px;height:18px;border-radius:50%;margin:auto;border:2px solid rgba(255,255,255,.9);box-shadow:0 0 0 1px rgba(15,23,42,.13)}
+  .ball-row label{font-size:.82rem;color:var(--muted)}
+  .ball-row input[type="number"],.ball-row select{
+    width:100%;border:1px solid var(--line);border-radius:9px;padding:7px 8px;background:white;color:var(--ink)
+  }
+  .derivation{grid-column:1/-1;margin-top:16px;padding:18px}
+  .der-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}
+  .der-head h2{font-size:1.08rem;margin:0}
+  .progress{display:flex;gap:6px}
+  .p-dot{width:9px;height:9px;border-radius:50%;background:#d9e1ec}
+  .p-dot.active{background:var(--accent)}
+  .equation-box{min-height:118px;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;border-radius:18px;background:linear-gradient(180deg,#f8fbff,#f4f8fd);border:1px solid #dde8f5;overflow:auto}
+  .equation{font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;font-size:clamp(1.1rem,2vw,1.55rem);line-height:1.75;white-space:nowrap}
+  .equation .accent{color:#1d4ed8;font-weight:700}
+  .equation .sum{font-size:1.35em;vertical-align:-.08em}
+  .der-caption{min-height:42px;margin-top:10px;text-align:center;color:var(--muted);font-size:.9rem}
+  .der-nav{display:flex;justify-content:center;gap:8px;margin-top:12px}
+  .step-btn[disabled]{opacity:.4;cursor:not-allowed}
+  .bottom-tabs{
+    position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:30;
+    display:flex;gap:6px;padding:6px;border-radius:18px;background:rgba(255,255,255,.94);
+    border:1px solid #dbe4ef;box-shadow:0 12px 30px rgba(15,23,42,.16);backdrop-filter:blur(12px)
+  }
+  .tab{border:0;background:transparent;border-radius:13px;padding:11px 16px;font-weight:750;color:#526174;cursor:pointer;min-width:185px}
+  .tab.active{background:#e8efff;color:#1746a2}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;color:var(--muted);font-size:.78rem}
+  .legend span{display:flex;gap:6px;align-items:center}
+  .legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .hidden{display:none!important}
+  .track-label{font-size:12px;fill:#76859a;font-weight:700}
+  .axis-label{font-size:13px;fill:#4b5d73;font-weight:700}
+  .omega-arrow{stroke:#2563eb;stroke-width:3;fill:none;stroke-linecap:round}
+  .energy-strip{margin-top:10px;display:flex;gap:4px;height:14px;border-radius:999px;overflow:hidden;background:#e9eef5}
+  .energy-strip div{height:100%;min-width:2px;transition:width .2s}
+  .small-formula{font-family:"Cambria Math","Times New Roman",serif;font-size:.95rem;color:#334155}
+  .formula-callout{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:9px 10px;margin-top:9px}
+  @media(max-width:980px){
+    .main{grid-template-columns:1fr}
+    .derivation{grid-column:1}
+    .stage-wrap{min-height:360px}
+    .bottom-tabs{width:calc(100% - 24px)}
+    .tab{min-width:0;flex:1;padding:10px 8px;font-size:.85rem}
+  }
+  @media(max-width:640px){
+    .app{padding:10px 10px 86px}
+    .topbar{align-items:flex-start;flex-direction:column}
+    .readouts{grid-template-columns:repeat(2,1fr)}
+    .stage-wrap{min-height:310px}
+    .ball-row.scene2{grid-template-columns:30px 1fr 76px}
+    .ball-row.scene2 select{grid-column:2/4}
+    .equation{font-size:1.02rem}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="title-wrap">
+      <h1>Moment zotrvačnosti z pohľadu energie</h1>
+      <p>Od sústavy hmotných bodov k vzťahu <span class="small-formula">E<sub>k</sub> = ½Iω²</span></p>
+    </div>
+    <div class="transport">
+      <button class="icon-btn primary" id="playBtn" title="Spustiť / pozastaviť">⏸ Pozastaviť</button>
+      <button class="icon-btn" id="resetBtn" title="Vynulovať polohu">↺ Reset polohy</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <section class="card sim-card">
+      <div class="sim-head">
+        <div>
+          <h2 id="sceneTitle">1. Spoločná kruhová dráha</h2>
+          <p id="sceneSub">Všetky guličky majú rovnakú rýchlosť aj rovnaký polomer dráhy.</p>
+        </div>
+        <div class="badge" id="rigidBadge">rovnaké r → rovnaké v</div>
+      </div>
+
+      <div class="stage-wrap">
+        <svg id="sim" viewBox="0 0 800 500" aria-label="Animácia rotujúcich guličiek">
+          <defs>
+            <filter id="ballShadow" x="-60%" y="-60%" width="220%" height="220%">
+              <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity=".22"/>
+            </filter>
+            <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L7,3 z" fill="#2563eb"/>
+            </marker>
+          </defs>
+          <g id="tracksLayer"></g>
+          <g id="axisLayer"></g>
+          <g id="ballsLayer"></g>
+        </svg>
+        <div class="center-note" id="stageNote">Spoločná uhlová rýchlosť ω → spoločná obvodová rýchlosť v = rω</div>
+      </div>
+
+      <div class="readouts">
+        <div class="readout"><div class="k">Uhlová rýchlosť</div><div class="v"><span id="omegaOut">1.20</span> rad·s⁻¹</div></div>
+        <div class="readout"><div class="k" id="radiusLabel">Polomer</div><div class="v"><span id="radiusOut">2.00</span><span id="radiusUnit"> m</span></div></div>
+        <div class="readout"><div class="k" id="thirdLabel">Rýchlosť v</div><div class="v"><span id="thirdOut">2.40</span><span id="thirdUnit"> m·s⁻¹</span></div></div>
+        <div class="readout"><div class="k">Celková Eₖ</div><div class="v"><span id="energyOut">2.88</span> J</div></div>
+      </div>
+      <div class="energy-strip" id="energyStrip" title="Podiel jednotlivých guličiek na celkovej kinetickej energii"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <aside class="card controls-card">
+      <h2>Nastavenia sústavy</h2>
+
+      <div class="section">
+        <div class="section-title">Pohyb</div>
+        <div class="ctrl">
+          <div class="ctrl-row"><label for="omega">Uhlová rýchlosť ω</label><span class="value-pill"><span id="omegaPill">1.20</span> rad/s</span></div>
+          <input id="omega" type="range" min="0.20" max="2.50" step="0.05" value="1.20">
+        </div>
+        <div class="ctrl" id="radiusCtrl">
+          <div class="ctrl-row"><label for="commonRadius">Polomer spoločnej dráhy r</label><span class="value-pill"><span id="radiusPill">2.00</span> m</span></div>
+          <input id="commonRadius" type="range" min="0.80" max="3.20" step="0.10" value="2.00">
+        </div>
+        <div class="ctrl hidden" id="trackCountCtrl">
+          <div class="ctrl-row"><label for="trackCount">Počet kruhových dráh</label><span class="value-pill" id="trackCountPill">3</span></div>
+          <input id="trackCount" type="range" min="1" max="4" step="1" value="3">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Guličky</div>
+        <div class="ctrl">
+          <div class="ctrl-row"><label for="ballCount">Počet guličiek</label><span class="value-pill" id="ballCountPill">1</span></div>
+          <input id="ballCount" type="range" min="1" max="6" step="1" value="1">
+        </div>
+        <div class="ball-list" id="ballList"></div>
+        <div class="hint" id="massHint">Hmotnosť mení veľkosť guličky. Všetky sa pohybujú po tej istej dráhe.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Fyzikálna pointa</div>
+        <div class="formula-callout" id="pointCallout">
+          Pri rovnakom polomere majú všetky guličky rovnaké <b>v</b>. Energia sa preto líši iba podľa hmotnosti.
+        </div>
+      </div>
+    </aside>
+
+    <section class="card derivation">
+      <div class="der-head">
+        <h2>Odvodenie kinetickej energie</h2>
+        <div class="progress" id="progress"></div>
+      </div>
+      <div class="equation-box"><div class="equation" id="equation"></div></div>
+      <div class="der-caption" id="derCaption"></div>
+      <div class="der-nav">
+        <button class="step-btn" id="prevStep">← Predchádzajúci krok</button>
+        <button class="step-btn" id="nextStep">Ďalší krok →</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<nav class="bottom-tabs" aria-label="Prepínanie prostredia">
+  <button class="tab active" id="tab1">● Rovnaký polomer</button>
+  <button class="tab" id="tab2">◎ Rôzne polomery</button>
+</nav>
+
+<script>
+(() => {
+  const colors = ['#2563eb','#e11d48','#0f766e','#b45309','#7c3aed','#0891b2'];
+  const state = {
+    scene: 1,
+    playing: true,
+    phase: 0,
+    lastTime: performance.now(),
+    omega: 1.20,
+    commonRadius: 2.0,
+    ballCount: 1,
+    trackCount: 3,
+    step: 0,
+    masses: [1,1.5,2,2.5,3,3.5],
+    trackAssignments: [0,1,2,0,1,2]
+  };
+
+  const $ = id => document.getElementById(id);
+  const sim = $('sim'), tracksLayer=$('tracksLayer'), axisLayer=$('axisLayer'), ballsLayer=$('ballsLayer');
+  const omega=$('omega'), commonRadius=$('commonRadius'), ballCount=$('ballCount'), trackCount=$('trackCount');
+  const cx=400, cy=250;
+  const pxPerMeter=68;
+  const scene2Radii = [0.95,1.55,2.15,2.75];
+
+  function fmt(x,d=2){ return Number(x).toFixed(d); }
+  function sub(i){ return String(i+1).split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[+c]).join(''); }
+  function sup2(){ return '²'; }
+  function visibleMasses(){ return state.masses.slice(0,state.ballCount); }
+  function totalMass(){ return visibleMasses().reduce((a,b)=>a+b,0); }
+  function trackRadiusMeters(i){ return scene2Radii[Math.max(0,Math.min(state.trackCount-1,i))]; }
+  function assignment(i){ return Math.max(0,Math.min(state.trackCount-1,state.trackAssignments[i] ?? 0)); }
+  function radiusForBall(i){ return state.scene===1 ? state.commonRadius : trackRadiusMeters(assignment(i)); }
+  function speedForBall(i){ return state.omega*radiusForBall(i); }
+  function energyForBall(i){
+    const v=speedForBall(i);
+    return .5*state.masses[i]*v*v;
+  }
+  function totalEnergy(){
+    let t=0; for(let i=0;i<state.ballCount;i++) t+=energyForBall(i); return t;
+  }
+  function inertia(){
+    let I=0; for(let i=0;i<state.ballCount;i++){ const r=radiusForBall(i); I+=state.masses[i]*r*r; } return I;
+  }
+
+  function svgEl(name, attrs={}){
+    const e=document.createElementNS('http://www.w3.org/2000/svg',name);
+    Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+    return e;
+  }
+
+  function drawStatic(){
+    tracksLayer.innerHTML=''; axisLayer.innerHTML='';
+    const axis = svgEl('circle',{cx,cy,r:8,fill:'#172033'});
+    const cross1=svgEl('line',{x1:cx-15,y1:cy,x2:cx+15,y2:cy,stroke:'#64748b','stroke-width':2});
+    const cross2=svgEl('line',{x1:cx,y1:cy-15,x2:cx,y2:cy+15,stroke:'#64748b','stroke-width':2});
+    axisLayer.append(cross1,cross2,axis);
+
+    const omegaPath=svgEl('path',{
+      d:`M ${cx-58} ${cy-45} A 74 74 0 0 1 ${cx+48} ${cy-54}`,
+      class:'omega-arrow','marker-end':'url(#arrowhead)'
+    });
+    const omegaText=svgEl('text',{x:cx-7,y:cy-78,'text-anchor':'middle',class:'axis-label'});
+    omegaText.textContent='ω';
+    axisLayer.append(omegaPath,omegaText);
+
+    if(state.scene===1){
+      const rp=state.commonRadius*pxPerMeter;
+      const c=svgEl('circle',{cx,cy,r:rp,fill:'none',stroke:'#9fb0c7','stroke-width':3,'stroke-dasharray':'8 8'});
+      tracksLayer.append(c);
+      const lab=svgEl('text',{x:cx+rp+8,y:cy-7,class:'track-label'}); lab.textContent=`r = ${fmt(state.commonRadius,1)} m`;
+      tracksLayer.append(lab);
+      const rline=svgEl('line',{x1:cx,y1:cy,x2:cx+rp,y2:cy,stroke:'#c5d0df','stroke-width':2});
+      tracksLayer.append(rline);
+    } else {
+      for(let j=0;j<state.trackCount;j++){
+        const r=trackRadiusMeters(j), rp=r*pxPerMeter;
+        const c=svgEl('circle',{cx,cy,r:rp,fill:'none',stroke:j%2?'#aebbd0':'#93a6bf','stroke-width':2.5,'stroke-dasharray':j%2?'7 7':'3 7'});
+        tracksLayer.append(c);
+        const lab=svgEl('text',{x:cx+rp+6,y:cy-4,class:'track-label'}); lab.textContent=`r${sub(j)} = ${fmt(r,2)} m`;
+        tracksLayer.append(lab);
+      }
+    }
+  }
+
+  function drawBalls(){
+    ballsLayer.innerHTML='';
+    for(let i=0;i<state.ballCount;i++){
+      const rMeters=radiusForBall(i), rp=rMeters*pxPerMeter;
+      const theta=state.phase + i*(2*Math.PI/state.ballCount);
+      const x=cx+rp*Math.cos(theta), y=cy+rp*Math.sin(theta);
+      const ballR=10+Math.sqrt(state.masses[i])*3.6;
+
+      const g=svgEl('g',{filter:'url(#ballShadow)'});
+      const ball=svgEl('circle',{cx:x,cy:y,r:ballR,fill:colors[i],stroke:'#fff','stroke-width':3});
+      g.append(ball);
+
+      const txt=svgEl('text',{x,y:y+4,'text-anchor':'middle',fill:'#fff','font-size':11,'font-weight':800});
+      txt.textContent=`m${sub(i)}`;
+      g.append(txt);
+      ballsLayer.append(g);
+
+      if(state.scene===2){
+        const rline=svgEl('line',{x1:cx,y1:cy,x2:x,y2:y,stroke:colors[i],'stroke-width':1.5,opacity:.22});
+        ballsLayer.insertBefore(rline,g);
+      }
+    }
+  }
+
+  function animate(now){
+    const dt=Math.min(.05,(now-state.lastTime)/1000);
+    state.lastTime=now;
+    if(state.playing) state.phase += state.omega*dt;
+    drawBalls();
+    requestAnimationFrame(animate);
+  }
+
+  function rebuildBallControls(){
+    const box=$('ballList'); box.innerHTML='';
+    for(let i=0;i<state.ballCount;i++){
+      const row=document.createElement('div');
+      row.className='ball-row'+(state.scene===2?' scene2':'');
+      row.innerHTML=`
+        <div class="dot" style="background:${colors[i]}"></div>
+        <label>gulička ${i+1}<br><span class="small-formula">E${sub(i)} = ${fmt(energyForBall(i),2)} J</span></label>
+        <input type="number" min="0.2" max="8" step="0.1" value="${state.masses[i]}" aria-label="Hmotnosť guličky ${i+1}">
+        ${state.scene===2?`<select aria-label="Dráha guličky ${i+1}"></select>`:''}
+      `;
+      const inp=row.querySelector('input');
+      inp.addEventListener('input',e=>{
+        let val=parseFloat(e.target.value); if(!Number.isFinite(val)) val=.2;
+        state.masses[i]=Math.max(.2,Math.min(8,val));
+        updateAll(false);
+      });
+      if(state.scene===2){
+        const sel=row.querySelector('select');
+        for(let j=0;j<state.trackCount;j++){
+          const op=document.createElement('option');
+          op.value=j; op.textContent=`dráha ${j+1} · r=${fmt(trackRadiusMeters(j),2)} m`;
+          if(assignment(i)===j) op.selected=true;
+          sel.append(op);
+        }
+        sel.addEventListener('change',e=>{
+          state.trackAssignments[i]=+e.target.value;
+          updateAll(false);
+        });
+      }
+      box.append(row);
+    }
+  }
+
+  function termsScene1(){
+    const terms=[];
+    for(let i=0;i<state.ballCount;i++) terms.push(`½m${sub(i)}v${sup2()}`);
+    return terms;
+  }
+  function mrTerms(){
+    const terms=[];
+    for(let i=0;i<state.ballCount;i++) terms.push(`m${sub(i)}r${sub(i)}${sup2()}`);
+    return terms;
+  }
+  function substitutedTerms(){
+    const terms=[];
+    for(let i=0;i<state.ballCount;i++) terms.push(`½m${sub(i)}(r${sub(i)}ω)${sup2()}`);
+    return terms;
+  }
+
+  function derivationSteps(){
+    const n=state.ballCount;
+    if(state.scene===1){
+      const msum=[...Array(n)].map((_,i)=>`m${sub(i)}`).join(' + ');
+      return [
+        {
+          eq:`E<sub>k</sub> = ${termsScene1().join(' + ')}`,
+          cap:`Celková kinetická energia je presný súčet energií všetkých ${n===1?'guličky':n+' guličiek'}.`
+        },
+        {
+          eq:`E<sub>k</sub> = <span class="accent">½v²</span> (${msum})`,
+          cap:'Keďže všetky guličky sú na rovnakom polomere a majú spoločnú uhlovú rýchlosť, majú rovnakú obvodovú rýchlosť v. Vyňali sme teda ½v².'
+        },
+        {
+          eq:`E<sub>k</sub> = ½v² <span class="sum">Σ</span><sub>i=1</sub><sup>${n}</sup> m<sub>i</sub>`,
+          cap:'Súčet jednotlivých hmotností zapíšeme kompaktne pomocou symbolu Σ.'
+        },
+        {
+          eq:`E<sub>k</sub> = ½<span class="accent">M</span>v² &nbsp;&nbsp; kde &nbsp; M = <span class="sum">Σ</span>m<sub>i</sub>`,
+          cap:'Celú sústavu na rovnakej dráhe môžeme z pohľadu kinetickej energie chápať ako jednu hmotnosť M pohybujúcu sa rýchlosťou v.'
+        }
+      ];
+    } else {
+      return [
+        {
+          eq:`E<sub>k</sub> = ${termsScene1().map((_,i)=>`½m${sub(i)}v${sub(i)}²`).join(' + ')}`,
+          cap:`Každá gulička má vlastnú obvodovú rýchlosť vᵢ, pretože môže byť v inej vzdialenosti od osi.`
+        },
+        {
+          eq:`E<sub>k</sub> = ${substitutedTerms().join(' + ')}`,
+          cap:'Pre tuhú rotáciu platí pre každú guličku vᵢ = rᵢω. Dosadíme teda rᵢω za každú obvodovú rýchlosť.'
+        },
+        {
+          eq:`E<sub>k</sub> = <span class="accent">½ω²</span> (${mrTerms().join(' + ')})`,
+          cap:'Uhlová rýchlosť ω je pre všetky časti sústavy rovnaká, preto môžeme ½ω² vyňať pred zátvorku.'
+        },
+        {
+          eq:`E<sub>k</sub> = ½ω² <span class="sum">Σ</span><sub>i=1</sub><sup>${n}</sup> m<sub>i</sub>r<sub>i</sub>²`,
+          cap:'Zostávajúci súčet mᵢrᵢ² zapíšeme pomocou symbolu Σ.'
+        },
+        {
+          eq:`<span class="accent">I = <span class="sum">Σ</span>m<sub>i</sub>r<sub>i</sub>²</span> &nbsp;&nbsp; ⇒ &nbsp;&nbsp; E<sub>k</sub> = ½Iω²`,
+          cap:'Súčet mᵢrᵢ² nazývame moment zotrvačnosti I vzhľadom na danú os. To je rotačný analóg hmotnosti v kinetickej energii.'
+        }
+      ];
+    }
+  }
+
+  function renderDerivation(){
+    const steps=derivationSteps();
+    state.step=Math.max(0,Math.min(state.step,steps.length-1));
+    $('equation').innerHTML=steps[state.step].eq;
+    $('derCaption').textContent=steps[state.step].cap;
+    $('prevStep').disabled=state.step===0;
+    $('nextStep').disabled=state.step===steps.length-1;
+    const p=$('progress'); p.innerHTML='';
+    steps.forEach((_,i)=>{ const d=document.createElement('div'); d.className='p-dot'+(i===state.step?' active':''); p.append(d); });
+  }
+
+  function updateBallEnergyLabels(){
+    const labels=$('ballList').querySelectorAll('.small-formula');
+    labels.forEach((el,i)=>{ if(i<state.ballCount) el.textContent=`E${sub(i)} = ${fmt(energyForBall(i),2)} J`; });
+  }
+
+  function renderEnergyStrip(){
+    const strip=$('energyStrip'), leg=$('legend'); strip.innerHTML=''; leg.innerHTML='';
+    const total=Math.max(totalEnergy(),1e-9);
+    for(let i=0;i<state.ballCount;i++){
+      const e=energyForBall(i), part=document.createElement('div');
+      part.style.width=(100*e/total)+'%'; part.style.background=colors[i]; strip.append(part);
+      const l=document.createElement('span'); l.innerHTML=`<i style="background:${colors[i]}"></i> m${sub(i)}: ${fmt(e,2)} J`; leg.append(l);
+    }
+  }
+
+  function updateReadouts(){
+    $('omegaOut').textContent=fmt(state.omega,2); $('omegaPill').textContent=fmt(state.omega,2);
+    $('ballCountPill').textContent=state.ballCount;
+    if(state.scene===1){
+      $('radiusOut').textContent=fmt(state.commonRadius,2); $('radiusUnit').textContent=' m'; $('radiusPill').textContent=fmt(state.commonRadius,2);
+      $('thirdOut').textContent=fmt(state.omega*state.commonRadius,2); $('thirdUnit').textContent=' m·s⁻¹';
+    } else {
+      $('radiusOut').textContent=state.trackCount; $('radiusUnit').textContent='';
+      $('thirdOut').textContent=fmt(inertia(),2); $('thirdUnit').textContent=' kg·m²';
+      $('trackCountPill').textContent=state.trackCount;
+    }
+    $('energyOut').textContent=fmt(totalEnergy(),2);
+  }
+
+  function updateSceneText(){
+    const s2=state.scene===2;
+    $('sceneTitle').textContent=s2?'2. Rôzne kruhové dráhy':'1. Spoločná kruhová dráha';
+    $('sceneSub').textContent=s2?'Všetky guličky rotujú s rovnakou uhlovou rýchlosťou, ale môžu mať rôzne polomery a teda aj rôzne rýchlosti.':'Všetky guličky majú rovnakú rýchlosť aj rovnaký polomer dráhy.';
+    $('rigidBadge').textContent=s2?'rovnaké ω → v = rω':'rovnaké r → rovnaké v';
+    $('stageNote').textContent=s2?'Tuhá rotácia: spoločné ω, ale vᵢ = rᵢω. Väčší polomer → väčšia obvodová rýchlosť.':'Spoločná uhlová rýchlosť ω → spoločná obvodová rýchlosť v = rω';
+    $('radiusCtrl').classList.toggle('hidden',s2);
+    $('trackCountCtrl').classList.toggle('hidden',!s2);
+    $('radiusLabel').textContent=s2?'Počet dráh':'Polomer';
+    $('thirdLabel').textContent=s2?'Moment zotrvačnosti I':'Rýchlosť v';
+    $('massHint').textContent=s2?'Každej guličke môžete zmeniť hmotnosť aj vybrať kruhovú dráhu. Hmotnosť mení aj jej veľkosť v animácii.':'Hmotnosť mení veľkosť guličky. Všetky sa pohybujú po tej istej dráhe.';
+    $('pointCallout').innerHTML=s2
+      ? 'Pri rovnakej <b>ω</b> rastie obvodová rýchlosť s polomerom: <span class="small-formula">v = rω</span>. Preto energia závisí od kombinácie <span class="small-formula">mr²</span>.'
+      : 'Pri rovnakom polomere majú všetky guličky rovnaké <b>v</b>. Energia sa preto líši iba podľa hmotnosti.';
+  }
+
+  function updateAll(rebuild=true){
+    state.omega=+omega.value; state.commonRadius=+commonRadius.value; state.ballCount=+ballCount.value; state.trackCount=+trackCount.value;
+    for(let i=0;i<state.ballCount;i++) if(state.trackAssignments[i]>=state.trackCount) state.trackAssignments[i]=state.trackCount-1;
+    updateSceneText();
+    drawStatic();
+    if(rebuild) rebuildBallControls();
+    updateReadouts();
+    updateBallEnergyLabels();
+    renderEnergyStrip();
+    renderDerivation();
+  }
+
+  omega.addEventListener('input',()=>updateAll(false));
+  commonRadius.addEventListener('input',()=>updateAll(false));
+  ballCount.addEventListener('input',()=>{ state.step=0; updateAll(true); });
+  trackCount.addEventListener('input',()=>{ state.step=0; updateAll(true); });
+
+  $('prevStep').addEventListener('click',()=>{ state.step--; renderDerivation(); });
+  $('nextStep').addEventListener('click',()=>{ state.step++; renderDerivation(); });
+
+  $('playBtn').addEventListener('click',()=>{
+    state.playing=!state.playing;
+    $('playBtn').textContent=state.playing?'⏸ Pozastaviť':'▶ Spustiť';
+  });
+  $('resetBtn').addEventListener('click',()=>{ state.phase=0; });
+
+  function setScene(s){
+    state.scene=s; state.step=0;
+    $('tab1').classList.toggle('active',s===1); $('tab2').classList.toggle('active',s===2);
+    // Pri prvom otvorení druhej scény ponecháme aspoň tri dráhy; počet guličiek ostáva podľa používateľa.
+    updateAll(true);
+  }
+  $('tab1').addEventListener('click',()=>setScene(1));
+  $('tab2').addEventListener('click',()=>setScene(2));
+
+  updateAll(true);
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
