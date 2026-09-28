@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konštrukčné úlohy - Odomkni zadanie</title>
+    
+    <!-- MathJax pre korektný matematický zápis -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            max-width: 650px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            font-size: 26px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 30px;
+        }
+        input[type="text"] {
+            width: 70%;
+            padding: 15px;
+            font-size: 28px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.3s ease;
+            margin-bottom: 20px;
+        }
+        input[type="text"]:focus {
+            border-color: #2980b9;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #vysledok {
+            margin-top: 35px;
+            padding: 25px;
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+            font-size: 19px;
+            line-height: 1.6;
+            display: none;
+            text-align: left;
+        }
+        .chyba {
+            color: #e74c3c;
+            font-weight: bold;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🔍 Odomkni svoju konštrukčnú úlohu</h1>
+        <p>Zadaj 4-znakový kód, ktorý si dostal na hodine:</p>
+        
+        <input type="text" id="kod-ulohy" maxlength="4" placeholder="KÓD" autocomplete="off" onkeypress="handleEnter(event)">
+        <br>
+        <button onclick="zobrazUlohu()">Zobraziť zadanie</button>
+
+        <div id="chybova-sprava" class="chyba">Tento kód neexistuje. Skontroluj znaky a skús to znova.</div>
+        
+        <div id="vysledok"></div>
+    </div>
+
+    <script>
+        const databazaUloh = {
+            // OSOVÁ SÚMERNOSŤ
+            "W3R8": "Daná je priamka \\(o\\) a dve rôzne kružnice \\(k_1(S_1, r_1)\\) a \\(k_2(S_2, r_2)\\). Zostrojte úsečku \\(AB\\) tak, aby \\(A \\in k_1\\), \\(B \\in k_2\\) a priamka \\(o\\) bola osou súmernosti úsečky \\(AB\\).",
+            "P7M2": "Daná je priamka \\(o\\), priamka \\(p\\) a kružnica \\(k\\). Zostrojte rovnostranný trojuholník \\(ABC\\) tak, aby jeho ťažnica na stranu \\(AB\\) ležala na priamke \\(o\\), vrchol \\(A\\) ležal na priamke \\(p\\) a vrchol \\(B\\) ležal na kružnici \\(k\\).",
+            "V4L9": "Daná je priamka \\(o\\) a dve kružnice \\(k_1\\) a \\(k_2\\). Zostrojte štvorec \\(ABCD\\) tak, aby jeho uhlopriečka \\(AC\\) ležala na priamke \\(o\\), vrchol \\(B\\) ležal na kružnici \\(k_1\\) a vrchol \\(D\\) ležal na kružnici \\(k_2\\).",
+            "C2K5": "Daná je priamka \\(o\\) a dve navzájom rôznobežné priamky \\(p, q\\). Zostrojte úsečku \\(XY\\) tak, aby \\(X \\in p\\), \\(Y \\in q\\) a priamka \\(o\\) bola osou súmernosti úsečky \\(XY\\).",
+            "H8N3": "Daná je kružnica \\(k(S, r)\\), priamka \\(p\\) a priamka \\(o\\). Zostrojte úsečku \\(AB\\) tak, že \\(A \\in k\\), \\(B \\in p\\) a priamka \\(o\\) je osou súmernosti úsečky \\(AB\\).",
+            "Y5T1": "Daná je priamka \\(p\\), kružnica \\(k\\) a bod \\(A \\notin p\\). Zostrojte kosoštvorec \\(ABCD\\) tak, aby jeho uhlopriečka \\(BD\\) ležala na priamke \\(p\\) a vrchol \\(C\\) ležal na kružnici \\(k\\).",
+            "D9Q4": "Sú dané dve pretínajúce sa kružnice \\(k_1, k_2\\) a priamka \\(o\\). Zostrojte rovnoramenný trojuholník \\(ABC\\) s osou súmernosti na priamke \\(o\\) tak, aby \\(B \\in k_1\\) a \\(C \\in k_2\\).",
+            "F1J7": "Daná je priamka \\(o\\), priamka \\(p\\) a kružnica \\(k\\). Zostrojte úsečku \\(AB\\) kolmú na priamku \\(o\\) tak, aby jej stred ležal na priamke \\(o\\), pričom \\(A \\in p\\) a \\(B \\in k\\).",
+            "X6B2": "Dané sú dve sústredné kružnice \\(k_1, k_2\\) a priamka \\(o\\) neprechádzajúca ich stredom. Zostrojte úsečku \\(XY\\) tak, aby \\(X \\in k_1\\), \\(Y \\in k_2\\) a \\(o\\) bola jej osou súmernosti.",
+            "R4Z8": "Daný je uhol s ramenami \\(a, b\\) a priamka \\(o\\). Zostrojte úsečku \\(AB\\) tak, aby \\(A \\in a\\), \\(B \\in b\\) a priamka \\(o\\) bola osou úsečky \\(AB\\).",
+            "M3G9": "Daný je štvorec \\(KLMN\\) a priamka \\(o\\), ktorá ho pretína. Zostrojte taký bod \\(X\\) na priamke \\(o\\), ktorý má rovnakú vzdialenosť od priamky \\(KL\\) aj od priamky \\(MN\\).",
+            "L2P5": "Daná je kružnica \\(k\\), priamka \\(p\\) a úsečka dĺžky \\(d\\). Zostrojte takú tetivu \\(XY\\) kružnice \\(k\\), ktorá má dĺžku \\(d\\) a jej os súmernosti je kolmá na priamke \\(p\\).",
+            "T8W1": "Daný je pravý uhol s vrcholom \\(V\\) a v ňom bod \\(A\\). Zostrojte kružnicu, ktorá prechádza bodom \\(A\\) a dotýka sa oboch ramien uhla.",
+            "K7C4": "Daná je os \\(o\\), bod \\(A\\) a kružnica \\(k\\). Zostrojte deltoid \\(ABCD\\) tak, aby vrcholy \\(B, D\\) ležali na kružnici \\(k\\) a uhlopriečka \\(AC\\) ležala na priamke \\(o\\).",
+            "N5H6": "Dve mestá \\(A\\) a \\(B\\) ležia na tom istom brehu rieky (priamka \\(p\\)). Nájdite na brehu rieky miesto \\(X\\) pre stavbu vodárne tak, aby dĺžka potrubia \\(AX + BX\\) bola čo najkratšia.",
+
+            // STREDOVÁ SÚMERNOSŤ
+            "B1Y3": "Daný je bod \\(S\\) a dve kružnice \\(k_1, k_2\\). Zostrojte úsečku \\(AB\\) tak, aby \\(A \\in k_1\\), \\(B \\in k_2\\) a bod \\(S\\) bol stredom úsečky \\(AB\\).",
+            "Q9F2": "Daný je bod \\(S\\) a dve rôznobežné priamky \\(p, q\\). Zostrojte úsečku \\(XY\\) tak, aby \\(X \\in p\\), \\(Y \\in q\\) a bod \\(S\\) bol stredom tejto úsečky.",
+            "J4X7": "Daná je kružnica \\(k\\), priamka \\(p\\) a bod \\(S\\). Zostrojte úsečku \\(AB\\), ktorá má stred v bode \\(S\\), pričom \\(A \\in k\\) a \\(B \\in p\\).",
+            "Z6D8": "Daný je štvorec \\(ABCD\\) a bod \\(S\\) v jeho vnútri. Zostrojte úsečku \\(XY\\) so stredom \\(S\\) tak, že bod \\(X\\) leží na strane \\(AB\\) a bod \\(Y\\) leží na strane \\(CD\\).",
+            "G2R5": "Dané sú tri navzájom rôznobežné priamky \\(p, q, r\\). Zostrojte rovnobežník \\(ABCD\\), ktorého stred leží na priamke \\(r\\), vrchol \\(A\\) na priamke \\(p\\) a protiľahlý vrchol \\(C\\) na priamke \\(q\\).",
+            "V8M1": "Sú dané dve pretínajúce sa kružnice \\(k_1, k_2\\) a ich spoločný bod \\(A\\). Veďte bodom \\(A\\) sečnicu tak, aby tetivy vytvorené na kružniciach \\(k_1\\) a \\(k_2\\) mali rovnakú dĺžku.",
+            "P3L9": "Daný je bod \\(S\\) a uhol s ramenami \\(a, b\\). Zostrojte úsečku \\(XY\\) so stredom \\(S\\) tak, aby jej krajné body ležali na ramenách uhla.",
+            "C7T4": "Daný je ostrouhlý trojuholník \\(ABC\\) a bod \\(S\\). Zostrojte úsečku \\(XY\\) so stredom v bode \\(S\\) tak, aby \\(X\\) ležal na úsečke \\(AB\\) a \\(Y\\) na úsečke \\(BC\\).",
+            "W1K6": "Daná je úsečka \\(AB\\) a bod \\(S\\). Zostrojte rovnobežník \\(ABCD\\) tak, aby bod \\(S\\) bol stredom jeho strany \\(CD\\).",
+            "H5N2": "Sú dané dve sústredné kružnice \\(k_1, k_2\\) so stredom \\(O\\) a bod \\(S \\neq O\\). Zostrojte úsečku \\(XY\\) so stredom v bode \\(S\\) tak, aby \\(X \\in k_1\\) a \\(Y \\in k_2\\).",
+            "Y9Q8": "Daný je trojuholník \\(ABC\\). Zostrojte priamku \\(p\\) prechádzajúcu ťažiskom \\(T\\) trojuholníka tak, aby odtínala z trojuholníka úsečku, ktorej stredom je bod \\(T\\).",
+            "F4B3": "Daná je kružnica \\(k\\) so stredom \\(O\\), priamka \\(p\\) a bod \\(S\\). Zostrojte štvorec \\(ABCD\\) so stredom v bode \\(S\\) tak, že \\(A \\in k\\) a \\(C \\in p\\).",
+            "X2J9": "Daný je konvexný štvoruholník \\(KLMN\\) a bod \\(S\\) v jeho exteriéri. Zostrojte úsečku \\(XY\\) tak, aby \\(X\\) ležal na obvode štvoruholníka, \\(Y\\) ležal na priamke \\(KL\\) a \\(S\\) bol stredom úsečky \\(XY\\).",
+            "D7Z1": "Dané sú dve kružnice \\(k_1, k_2\\), ktoré sa nepretínajú, a bod \\(S\\) medzi nimi. Nájdite body \\(X \\in k_1\\) a \\(Y \\in k_2\\) také, že bod \\(S\\) je stredom úsečky \\(XY\\).",
+            "R5G6": "Zostrojte trojuholník \\(ABC\\), ak sú dané dĺžky jeho ťažníc \\(t_a, t_b, t_c\\)."
+        };
+
+        function zobrazUlohu() {
+            let zadanyKod = document.getElementById('kod-ulohy').value.trim().toUpperCase();
+            let vysledokDiv = document.getElementById('vysledok');
+            let chybaDiv = document.getElementById('chybova-sprava');
+
+            if (databazaUloh[zadanyKod]) {
+                chybaDiv.style.display = 'none';
+                vysledokDiv.style.display = 'block';
+                vysledokDiv.innerHTML = "<strong>Tvoje zadanie:</strong><br><br>" + databazaUloh[zadanyKod];
+                MathJax.typesetPromise([vysledokDiv]);
+            } else {
+                vysledokDiv.style.display = 'none';
+                chybaDiv.style.display = 'block';
+            }
+        }
+
+        function handleEnter(event) {
+            if (event.key === "Enter") {
+                zobrazUlohu();
+            }
+        }
+    </script>
+</body>
+</html>
