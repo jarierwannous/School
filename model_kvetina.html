@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model Kvetu s AR</title>
+    
+    <!-- Načítanie Google model-viewer komponenty cez CDN -->
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+
+    <style>
+        /* Základné nastavenia a premenné */
+        :root {
+            --primary-color: #2E7D32;
+            --accent-color: #81C784;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --bg-glass: rgba(255, 255, 255, 0.9);
+            --font-main: 'Segoe UI', system-ui, Roboto, Helvetica, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; /* Zabráni scrollovaniu, appka je na celú obrazovku */
+            background-color: #f0f4f1;
+        }
+
+        /* 3D Prehliadač na celú obrazovku */
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            --poster-color: transparent;
+        }
+
+        /* 
+         * STYLOVANIE HOTSPOTOV (Interaktívnych bodov) 
+         */
+        .hotspot {
+            display: block;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid white;
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.2s ease, background-color 0.2s;
+        }
+
+        /* Pulzujúci efekt pomocou ::after elementu */
+        .hotspot::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            animation: pulse 1.5s infinite ease-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+        }
+
+        .hotspot:hover, .hotspot.active {
+            transform: scale(1.2);
+            background-color: #FFB300; /* Zvýraznenie pri prejdení myšou / výbere */
+        }
+        
+        .hotspot.active::after {
+            background-color: #FFB300;
+        }
+
+        /* 
+         * INFORMAČNÝ PANEL (Card)
+         */
+        .info-card {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 500px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            z-index: 10;
+            pointer-events: auto;
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: all 0.3s ease;
+        }
+
+        .info-default {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        .info-content {
+            display: none; /* Predvolene skryté, kým sa neklikne na hotspot */
+        }
+
+        .info-title {
+            color: var(--primary-color);
+            font-size: 1.6rem;
+            margin-bottom: 4px;
+        }
+
+        .info-latin {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .info-desc {
+            color: var(--text-main);
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+
+        /* Responzivita pre desktop (Panel sa presunie vľavo hore) */
+        @media (min-width: 768px) {
+            .info-card {
+                bottom: auto;
+                top: 30px;
+                left: 30px;
+                transform: none;
+                width: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 
+        3D MODEL VIEWER 
+        Nastavenia: 
+        ar - povolí AR zobrazenie na mobiloch
+        camera-controls - povolí otáčanie a zoomovanie myšou/prstom
+        auto-rotate - model sa bude pomaly sám otáčať
+    -->
+    <model-viewer 
+        src="kvet.glb" 
+        ar 
+        ar-modes="webxr scene-viewer quick-look" 
+        camera-controls 
+        auto-rotate 
+        shadow-intensity="1.5"
+        exposure="1"
+        alt="3D model krytosemennej rastliny">
+        
+        <!-- 
+            INŠTRUKCIA PRE ÚČITEĽA (NASTAVENIE HOTSPOTOV):
+            Aby hotspoty presne sedeli na váš stiahnutý model (kvet.glb), musíte získať ich presné 3D súradnice.
+            1. Choďte na stránku: https://modelviewer.dev/editor/
+            2. Nahrajte tam váš súbor kvet.glb.
+            3. V pravom paneli kliknite na "Add Hotspot" a kliknite na požadované miesto na modeli.
+            4. Editor vám vygeneruje atribúty data-position="X Y Z" a data-normal="X Y Z".
+            5. Tieto hodnoty prekopírujte do príslušných buttonov nižšie.
+        -->
+
+        <!-- 1. Kvetné lôžko -->
+        <button class="hotspot" slot="hotspot-receptaculum" data-position="0 -0.5 0" data-normal="0 1 0" data-part="receptaculum"></button>
+        
+        <!-- 2. Kališné lístky -->
+        <button class="hotspot" slot="hotspot-sepala" data-position="0.3 -0.3 0.3" data-normal="0.5 -0.5 0.5" data-part="sepala"></button>
+        
+        <!-- 3. Korunné lístky -->
+        <button class="hotspot" slot="hotspot-petala" data-position="-0.4 0.2 -0.2" data-normal="-1 0.5 -0.5" data-part="petala"></button>
+        
+        <!-- 4. Tyčinka (Peľnica/Nitka) -->
+        <button class="hotspot" slot="hotspot-stamen" data-position="0.2 0.6 0.1" data-normal="0.5 1 0.2" data-part="stamen"></button>
+        
+        <!-- 5. Piestik (Blizna/Semenník) -->
+        <button class="hotspot" slot="hotspot-pistil" data-position="0 0.8 0" data-normal="0 1 0" data-part="pistil"></button>
+
+    </model-viewer>
+
+    <!-- INFORMAČNÝ PANEL -->
+    <div class="info-card">
+        <!-- Východiskový stav -->
+        <div id="info-default" class="info-default">
+            <strong>Interaktívna biológia</strong><br><br>
+            Klikni na časť kvetu pre zobrazenie informácií alebo si kvet premietni v AR zobrazení na lavicu (ikona vpravo dole na mobiloch).
+        </div>
+
+        <!-- Obsah po kliknutí -->
+        <div id="info-content" class="info-content">
+            <h2 id="info-title" class="info-title">Názov</h2>
+            <div id="info-latin" class="info-latin">Latinum</div>
+            <p id="info-desc" class="info-desc">Popis funkcie...</p>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIKA -->
+    <script>
+        // Databáza informácií pre gymnaziálne učivo
+        const flowerData = {
+            receptaculum: { 
+                sk: "Kvetné lôžko", 
+                lat: "Receptaculum", 
+                desc: "Zhrubnutá koncová časť stonky, z ktorej vyrastajú ostatné kvetné orgány. Tvorí základňu pre stavbu celého kvetu." 
+            },
+            sepala: { 
+                sk: "Kališné lístky", 
+                lat: "Calyx (Sepala)", 
+                desc: "Vonkajší obal kvetu. Sú spravidla zelené a prebieha v nich fotosyntéza. Ich primárnou funkciou je ochrana vnútorných, jemnejších častí kvetu, predovšetkým v štádiu púčika." 
+            },
+            petala: { 
+                sk: "Korunné lístky", 
+                lat: "Corolla (Petala)", 
+                desc: "Vnútorný kvetný obal. Svojím pestrým sfarbením, tvarom a často aj produkciou vône alebo nektáru slúžia na prilákanie opeľovačov (hmyzu, vtákov)." 
+            },
+            stamen: { 
+                sk: "Tyčinka", 
+                lat: "Stamen", 
+                desc: "Samčí pohlavný orgán kvetu. Skladá sa z tenkej nitky (filamentum) a peľnice (anthera) na vrchole. V peľnici dochádza k redukčnému deleniu a tvorbe haploidných peľových zŕn." 
+            },
+            pistil: { 
+                sk: "Piestik", 
+                lat: "Pistillum", 
+                desc: "Samičí pohlavný orgán. Skladá sa z blizny (slúži na zachytenie peľu), čnelky (kadiaľ prerastá peľové vrecúško) a semenníka, v ktorom sú uložené vajíčka (budúce semená)." 
+            }
+        };
+
+        // DOM Elementy
+        const hotspots = document.querySelectorAll('.hotspot');
+        const defaultPanel = document.getElementById('info-default');
+        const contentPanel = document.getElementById('info-content');
+        const titleEl = document.getElementById('info-title');
+        const latinEl = document.getElementById('info-latin');
+        const descEl = document.getElementById('info-desc');
+        const viewer = document.querySelector('model-viewer');
+
+        // Pridanie event listenerov pre každý hotspot
+        hotspots.forEach(hotspot => {
+            hotspot.addEventListener('click', (event) => {
+                // Zastavíme auto-rotáciu pri interakcii, aby si študent mohol v kľude čítať
+                viewer.autoRotate = false;
+
+                // Odstránime triedu 'active' zo všetkých hotspotov
+                hotspots.forEach(h => h.classList.remove('active'));
+                
+                // Pridáme triedu 'active' kliknutému hotspotu
+                event.target.classList.add('active');
+
+                // Získame dáta podľa atribútu data-part
+                const partId = event.target.getAttribute('data-part');
+                const data = flowerData[partId];
+
+                if(data) {
+                    // Skryjeme predvolený text a ukážeme obsah
+                    defaultPanel.style.display = 'none';
+                    contentPanel.style.display = 'block';
+
+                    // Aktualizujeme texty v paneli
+                    titleEl.textContent = data.sk;
+                    latinEl.textContent = data.lat;
+                    descEl.textContent = data.desc;
+                }
+            });
+        });
+
+        // Ak užívateľ klikne mimo hotspotu (na samotný model alebo pozadie), obnoví sa auto-rotácia
+        viewer.addEventListener('click', (event) => {
+            // Kontrola, či neklikol na samotný hotspot (keďže hotspoty sú deťmi model-vieweru)
+            if(!event.target.classList.contains('hotspot')) {
+                viewer.autoRotate = true;
+            }
+        });
+    </script>
+</body>
+</html>
