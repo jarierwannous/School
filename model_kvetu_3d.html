@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#f7faf5" />
+<title>3D anatómia kvetu – interaktívny biologický applet</title>
+<style>
+:root{--ink:#1d3932;--muted:#72837a;--forest:#255e4c;--line:#e2ebe3;--paper:#fffdfa;--pale:#f1f7ef;--pink:#d94e87;--shadow:0 10px 35px rgba(27,62,48,.07)}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:#f6f8f3}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:3px solid #84bdaa;outline-offset:3px}
+.app{max-width:1700px;margin:0 auto;min-height:100vh;padding:21px 28px 24px;display:flex;flex-direction:column;gap:17px}
+.header{display:flex;justify-content:space-between;align-items:center;gap:20px}.eyebrow{display:flex;align-items:center;gap:9px;color:#548374;font-weight:800;font-size:11px;letter-spacing:.17em;text-transform:uppercase;margin-bottom:5px}.eyebrow:before{content:"";width:8px;height:8px;background:#8fcab0;border-radius:50%}.header h1{margin:0;font-size:clamp(25px,3vw,37px);letter-spacing:-.055em;line-height:1.17;font-weight:800}.header p{margin:7px 0 0;color:#7d8d80;font-size:13px}.brand{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 13px;color:#527465;font-weight:800;font-size:12px;box-shadow:var(--shadow)}.brand svg{width:22px;height:22px}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:18px;min-height:610px;flex:1}
+.stage{border:1px solid #dfece3;position:relative;min-height:620px;background:radial-gradient(ellipse 72% 70% at 53% 40%,#fffef8 0,#f4f8ed 58%,#e7f1e9 100%);border-radius:23px;overflow:hidden;box-shadow:var(--shadow);isolation:isolate}
+.stage::before{content:"";position:absolute;inset:0;background-image:linear-gradient(#618e6b09 1px,transparent 1px),linear-gradient(90deg,#618e6b09 1px,transparent 1px);background-size:38px 38px;pointer-events:none}
+.stage::after{content:"";position:absolute;left:50%;bottom:12%;width:45%;height:7%;background:radial-gradient(ellipse,#8d9b8140,transparent 70%);transform:translateX(-50%);filter:blur(11px);pointer-events:none;z-index:-1}
+#flowerCanvas{display:block;width:100%;height:100%;position:absolute;inset:0;touch-action:none;cursor:grab}#flowerCanvas.dragging{cursor:grabbing}
+.stage-top{position:absolute;top:20px;left:20px;right:20px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;pointer-events:none}.pill{pointer-events:auto;border:1px solid #dceade;background:#ffffffd9;backdrop-filter:blur(8px);border-radius:13px;padding:10px 13px;box-shadow:0 5px 22px #2d66420a;font-size:12px;color:#557e6a;font-weight:750;display:flex;align-items:center;gap:9px}.pulse{height:8px;width:8px;background:#70b795;box-shadow:0 0 0 4px #a9d9bd65;border-radius:50%}.icon-btn{border:1px solid #dce9df;background:#fff;display:inline-flex;align-items:center;justify-content:center;min-height:36px;min-width:36px;border-radius:11px;color:#436a58;transition:.2s}.icon-btn:hover,.btn:hover{transform:translateY(-1px);box-shadow:0 5px 12px #1a493219}.icon-btn svg{width:17px;height:17px}
+.stage-bottom{position:absolute;bottom:18px;left:18px;right:18px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;pointer-events:none}.stage-bottom>*{pointer-events:auto}.hint{font-size:11px;color:#6e897c;background:#ffffffc2;border:1px solid #e2eee5;border-radius:12px;padding:10px 13px;backdrop-filter:blur(6px)}.hint strong{color:#456e5b}.controls{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #dce9df;border-radius:11px;background:#fffdfc;color:#49695b;min-height:38px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;font-weight:730;font-size:12px;transition:.16s}.btn.active{background:#2a684e;color:#fff;border-color:#2a684e}.btn svg{width:15px;height:15px}.btn.small{font-size:11px;padding:0 11px;min-height:33px}
+.sidebar{border:1px solid #e5ebe3;background:#fffcf9;border-radius:23px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:620px}.tabs{padding:15px 15px 0;display:grid;grid-template-columns:1fr 1fr;gap:7px}.tab{border:none;background:#f0f3ed;color:#829086;font-size:12px;font-weight:800;padding:12px;border-radius:11px}.tab.active{color:#fff;background:#275e4c;box-shadow:0 4px 14px #2e73532a}.sideview{padding:21px 19px 18px;flex:1;min-height:0;display:flex;flex-direction:column}.sideview[hidden]{display:none}.sectionlabel{font-size:10px;letter-spacing:.15em;color:#95a299;text-transform:uppercase;font-weight:850}.sideview h2{font-size:21px;letter-spacing:-.045em;margin:6px 0 6px;line-height:1.2}.sideview p.lead{color:#7d8a81;line-height:1.5;margin:0 0 16px;font-size:12px}
+.parts{display:flex;flex-direction:column;gap:5px;overflow-y:auto;max-height:350px;padding-right:3px}.part{border:1px solid transparent;border-radius:12px;display:grid;grid-template-columns:28px 1fr 21px;align-items:center;gap:8px;padding:9px 10px;background:transparent;color:#456053;text-align:left;width:100%;min-height:44px}.part:hover{background:#f5f6ef}.part.active{background:#eaf4e9;border-color:#d1e5d5}.part.hiddenpart{opacity:.49}.part-text{min-width:0}.part-text strong{display:block;font-size:12px;font-weight:800}.part-text small{display:block;font-size:10px;color:#8b978b;margin-top:1px}.dot{width:23px;height:23px;border-radius:7px;display:grid;place-items:center;box-shadow:inset 0 -2px 0 #00000010}.dot:after{content:"";background:#ffffffdd;border-radius:50%;width:8px;height:8px}.visibility{border:0;background:none;padding:4px;color:#7a9884;cursor:pointer;display:flex;align-items:center}.visibility svg{width:17px;height:17px}.part.hiddenpart .visibility{color:#b8bfb7}
+.info{margin-top:14px;padding:16px;border-radius:15px;background:#f3f6ed;border:1px solid #e4ebdf}.info-title{display:flex;align-items:center;justify-content:space-between;gap:6px}.info-title h3{margin:0;font-size:16px;letter-spacing:-.025em}.info-category{font-size:9px;font-weight:800;letter-spacing:.07em;color:#709484;background:#e5eee5;border-radius:8px;padding:5px 7px;white-space:nowrap}.info p{font-size:12px;line-height:1.6;color:#687b6d;margin:8px 0}.fact{padding-top:10px;margin-top:10px;border-top:1px dashed #d1dfd0;font-size:11px;line-height:1.5;color:#4e765d}.fact strong{color:#285d43}.side-foot{margin-top:auto;padding-top:15px}.rowlabel{display:flex;justify-content:space-between;color:#486c5a;font-size:11px;font-weight:800;margin-bottom:7px}.range{width:100%;accent-color:#367d5e;cursor:pointer}.range-ends{display:flex;justify-content:space-between;color:#9aa99c;font-size:10px}.cut-info{font-size:11px;line-height:1.55;color:#6e8272;margin:9px 0 0;padding-left:2px}
+.quiz-card{background:#edf5eb;border:1px solid #daead7;border-radius:16px;padding:18px;margin-top:9px}.quiz-top{display:flex;justify-content:space-between;color:#6e8b79;font-size:11px;font-weight:850;letter-spacing:.06em}.quiz-question{font-size:22px;line-height:1.32;font-weight:850;letter-spacing:-.035em;margin:19px 0}.quiz-feedback{min-height:45px;color:#65806b;font-size:12px;line-height:1.5}.next{width:100%;border:0;color:#fff;background:#26644d;border-radius:11px;min-height:43px;font-size:12px;font-weight:800}.next:disabled{opacity:.45;cursor:not-allowed}.quiz-note{font-size:12px;line-height:1.7;color:#78877c;margin:17px 3px}.scorebar{height:7px;border-radius:10px;background:#e0e9dd;overflow:hidden;margin:12px 0 0}.scorefill{height:100%;background:#61ad81;width:0%;transition:width .25s}
+.footer{display:flex;justify-content:space-between;align-items:center;gap:16px;color:#829085;font-size:11px;padding:0 3px}.footer strong{color:#527b63}.toast{position:absolute;top:69px;left:50%;transform:translateX(-50%) translateY(-12px);opacity:0;pointer-events:none;border-radius:12px;padding:11px 15px;background:#285b49;color:#fff;font-size:12px;font-weight:750;box-shadow:0 10px 25px #2f554238;transition:.25s;max-width:min(88%,490px);text-align:center}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:1100px){.app{padding:16px}.workspace{grid-template-columns:minmax(0,1fr) 320px;gap:12px}.stage{min-height:630px}}
+@media(max-width:850px){.workspace{grid-template-columns:1fr}.stage{height:580px;min-height:580px}.sidebar{min-height:unset}.parts{max-height:250px}.footer{flex-wrap:wrap}.brand{display:none}}
+@media(max-width:520px){.app{padding:11px;gap:12px}.header h1{font-size:26px}.header p{font-size:11px}.stage{height:530px;min-height:530px;border-radius:17px}.stage-top{top:10px;left:10px;right:10px}.stage-bottom{left:9px;right:9px;bottom:10px;justify-content:center}.hint{display:none}.btn{min-height:35px;font-size:10px;padding:0 9px}.controls{justify-content:center}.pill{font-size:10px;padding:9px}.sidebar{border-radius:17px}.footer{font-size:10px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+ <header class="header"><div><div class="eyebrow">Biológia · interaktívny model</div><h1>Stavba kvetu <span style="font-weight:500;color:#91ae97">/ 3D</span></h1><p>Preskúmaj vonkajšie aj vnútorné časti kvetu a zisti, na čo slúžia.</p></div>
+ <div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 16C7 7 16 2 16 2s9 5 0 14ZM16 16C25 7 30 16 30 16s-5 9-14 0ZM16 16C25 25 16 30 16 30s-9-5 0-14ZM16 16C7 25 2 16 2 16s5-9 14 0Z" fill="#83bfa0"/><circle cx="16" cy="16" r="4" fill="#d9a45f"/></svg> PRÍRODOVEDNÉ LABORATÓRIUM</div></header>
+ <main class="workspace">
+ <section class="stage" id="stage" aria-label="Interaktívna 3D vizualizácia kvetu">
+ <canvas id="flowerCanvas" aria-label="Otočiteľný trojrozmerný model kvetu. Ťahaním myši otáčate, kolieskom približujete; časti sa dajú vybrať kliknutím."></canvas>
+ <div class="stage-top"><div class="pill"><span class="pulse"></span> 3D model · schematický kvet</div><button class="icon-btn" id="reset" title="Obnoviť pôvodný pohľad" aria-label="Obnoviť pôvodný pohľad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button></div>
+ <div class="toast" id="toast" role="status" aria-live="polite"></div>
+ <div class="stage-bottom"><div class="hint"><strong>↔</strong> Ťahaj a otáčaj &nbsp; · &nbsp; <strong>⊕</strong> Približuj &nbsp; · &nbsp; <strong>◎</strong> Klikni na časť</div><div class="controls">
+ <button class="btn active" id="labelsBtn" aria-pressed="true">◇ Názvy</button><button class="btn" id="cutBtn" aria-pressed="false">◐ Rez semenníkom</button><button class="btn" id="rotateBtn" aria-pressed="false">↻ Otáčanie</button><button class="btn" id="pollenBtn">✺ Opelenie</button>
+ </div></div>
+ </section>
+ <aside class="sidebar">
+ <div class="tabs"><button class="tab active" data-tab="study">Preskúmať</button><button class="tab" data-tab="quiz">Kvíz</button></div>
+ <div id="study" class="sideview"><div class="sectionlabel">Anatómia kvetu</div><h2>Časti a ich funkcie</h2><p class="lead">Vyber časť v zozname alebo priamo v 3D modeli. Symbol oka ju skryje alebo zobrazí.</p><div class="parts" id="parts"></div>
+ <div class="info" id="info"><div class="info-title"><h3 id="infoName">Korunné lupienky</h3><span class="info-category" id="infoCategory">OKVETIE</span></div><p id="infoText"></p><div class="fact" id="infoFact"></div></div>
+ <div class="side-foot"><div class="rowlabel"><label for="explode">Rozloženie kvetu</label><span id="explodeValue">0 %</span></div><input class="range" id="explode" type="range" min="0" max="100" step="1" value="0"/><div class="range-ends"><span>Zložený kvet</span><span>Oddelené časti</span></div><p class="cut-info">Model predstavuje <strong>zjednodušený obojpohlavný kvet</strong>, nie konkrétny rastlinný druh. Počet a tvar častí sa u druhov líši.</p></div>
+ </div>
+ <div id="quiz" class="sideview" hidden><div class="sectionlabel">Aktívne učenie</div><h2>Dokážeš ich určiť?</h2><p class="lead">Klikni v 3D modeli na správnu časť. Pomocné názvy sa počas kvízu skryjú.</p><div class="quiz-card"><div class="quiz-top"><span id="qProgress">OTÁZKA 1 / 8</span><span id="qScore">0 BODOV</span></div><div class="scorebar"><div class="scorefill" id="scoreFill"></div></div><div class="quiz-question" id="qQuestion">Nájdi korunný lupienok.</div><div class="quiz-feedback" id="qFeedback">Otáčaj kvet a klikni priamo na hľadanú štruktúru.</div><button class="next" id="nextQuestion" disabled>Ďalšia otázka →</button></div><p class="quiz-note">Tip: Niektoré kvetné obaly sa pri otázke dočasne skryjú, aby bolo možné označiť aj vnútorné časti.</p><div class="side-foot"><button class="btn" id="restartQuiz">↻ Začať kvíz odznova</button></div></div>
+ </aside>
+ </main>
+ <footer class="footer"><span><strong>Tip na hodinu:</strong> Najprv skry korunné lupienky, potom použi rez semenníkom a spusti opelenie.</span><span>Didaktická vizualizácia · funguje aj offline · bez externých knižníc</span></footer>
+</div>
+<script>
+'use strict';
+// Self-contained educational software 3D renderer (Canvas 2D), no network or libraries required.
+const TAU=Math.PI*2, PI=Math.PI;
+const $=id=>document.getElementById(id);
+const canvas=$('flowerCanvas'), stage=$('stage'), ctx=canvas.getContext('2d',{alpha:true});
+let W=700,H=650,dpr=1,triangles=[], lastTick=0, toastTimer=0;
+const state={yaw:-.52,pitch:.42,zoom:1.0,selected:null,showLabels:true,cut:false,rotate:false,explode:0,mode:'study',pollenStart:0,pollenActive:false,visibility:{}};
+const PARTS={
+ petal:{name:'Korunné lupienky',short:'Koruna',cat:'OKVETIE',color:'#e97ba5',desc:'Farebné lupienky spolu vytvárajú korunu kvetu. Často lákajú opeľovače farbou, tvarom a niekedy aj vôňou.',fact:'Korunné lupienky nie sú samičím ani samčím pohlavným orgánom.'},
+ sepal:{name:'Kališné lístky',short:'Kalich',cat:'OKVETIE',color:'#6cad76',desc:'Zelené lístky pod korunou tvoria kalich. Najmä v púčiku chránia vyvíjajúce sa vnútorné časti kvetu.',fact:'Kalich a koruna spolu vytvárajú rozlíšené kvetné obaly.'},
+ stamen:{name:'Tyčinky',short:'Tyčinka',cat:'SAMČÍ ORGÁN',color:'#e7a354',desc:'Tyčinka sa skladá z nitky a prašníka. V prašníku sa tvorí peľ. Peľové zrná predstavujú samčie gametofyty, v ktorých vznikajú spermické bunky.',fact:'Peľ nie je to isté ako spermia; je to štruktúra nesúca samčí gametofyt.'},
+ stigma:{name:'Blizna',short:'Blizna',cat:'SAMIČÍ ORGÁN',color:'#c3aa4a',desc:'Blizna je vrchná prijímacia časť piestika. Pri opelení na ňu dopadá peľ; môže byť lepkavá alebo inak prispôsobená jeho zachytávaniu.',fact:'Opelenie je prenos peľu na bliznu, nie samotné oplodnenie.'},
+ style:{name:'Čnelka',short:'Čnelka',cat:'SAMIČÍ ORGÁN',color:'#91bb6a',desc:'Čnelka spája bliznu so semenníkom. Po vyklíčení peľu ňou môže rásť peľová láčka smerom k vajíčku.',fact:'Blizna, čnelka a semenník sú časti piestika.'},
+ ovary:{name:'Semenník',short:'Semenník',cat:'SAMIČÍ ORGÁN',color:'#67a96a',desc:'Spodná časť piestika, v ktorej sa nachádzajú vajíčka. Po oplodnení a ďalšom vývine sa semenník u mnohých rastlín mení na plod.',fact:'Vajíčka sa po oplodnení vyvíjajú na semená. Semenník sa často vyvíja na plod.'},
+ ovule:{name:'Vajíčka',short:'Vajíčko',cat:'VO VNÚTRI SEMENNÍKA',color:'#ead49a',desc:'Vajíčka ležia v semenníku. Obsahujú samičí gametofyt a po oplodnení sa z nich vytvárajú semená.',fact:'Vajíčko a semeno nie sú totožné: semeno vzniká až po oplodnení a vývine.'},
+ receptacle:{name:'Kvetné lôžko',short:'Kvetné lôžko',cat:'PODPORNÁ ČASŤ',color:'#7dba78',desc:'Rozšírená vrcholová časť kvetnej osi. Nesie kvetné obaly, tyčinky a piestik.',fact:'Usporiadanie kvetných orgánov na lôžku je dôležitým znakom rastlín.'},
+ stem:{name:'Kvetná stopka',short:'Stopka',cat:'PODPORNÁ ČASŤ',color:'#478c63',desc:'Spája kvet s rastlinou, mechanicky ho podopiera a umožňuje prúdenie vody a látok k jeho orgánom.',fact:'Nie všetky kvety majú výraznú kvetnú stopku; niektoré sú sediace.'},
+ leaf:{name:'Listy na stonke',short:'List',cat:'KONTEXT MODELU',color:'#63ac74',desc:'Zelené listy sú tu znázornené pre orientáciu v modeli. Nejde o korunné ani kališné lístky; ich hlavnou funkciou je fotosyntéza.',fact:'Listy na stonke nie sú súčasťou vlastného kvetu.'}
+};
+Object.keys(PARTS).forEach(k=>state.visibility[k]=true);
+let meshes=[];
+function V(x,y,z,c){return{x,y,z,c}}
+function mix(a,b,t){return a.map((q,i)=>q*(1-t)+b[i]*t)}
+function addMesh(group,vertices,faces,opt={}){meshes.push({group,vertices,faces,...opt})}
+function sphere(group,cx,cy,cz,rx,ry,rz,col,nlon=16,nlat=10,opt={}){
+ const verts=[],faces=[];
+ for(let iy=0;iy<=nlat;iy++){const phi=PI*iy/nlat;for(let ix=0;ix<=nlon;ix++){const theta=TAU*ix/nlon;const sy=Math.cos(phi),sx=Math.sin(phi)*Math.cos(theta),sz=Math.sin(phi)*Math.sin(theta);const tone=.95+.12*sy;verts.push(V(cx+rx*sx,cy+ry*sy,cz+rz*sz,col.map(v=>v*tone)));}}
+ for(let iy=0;iy<nlat;iy++)for(let ix=0;ix<nlon;ix++){let a=iy*(nlon+1)+ix,b=a+1,c=a+nlon+1,d=c+1;faces.push([a,c,b],[b,c,d]);}
+ addMesh(group,verts,faces,opt);
+}
+function tube(group,points,rad,col,ns=9,opt={}){
+ const verts=[],faces=[];
+ for(let i=0;i<points.length;i++){
+  const p=points[i],prev=points[Math.max(0,i-1)],next=points[Math.min(points.length-1,i+1)];
+  let tx=next[0]-prev[0],ty=next[1]-prev[1],tz=next[2]-prev[2],ln=Math.hypot(tx,ty,tz)||1;tx/=ln;ty/=ln;tz/=ln;
+  let ax=0,ay=0,az=1;if(Math.abs(tz)>.93){ax=1;az=0}
+  let ux=ty*az-tz*ay,uy=tz*ax-tx*az,uz=tx*ay-ty*ax,un=Math.hypot(ux,uy,uz)||1;ux/=un;uy/=un;uz/=un;
+  let vx=ty*uz-tz*uy,vy=tz*ux-tx*uz,vz=tx*uy-ty*ux;
+  for(let j=0;j<=ns;j++){const a=TAU*j/ns,r=typeof rad==='function'?rad(i,points.length):rad;verts.push(V(p[0]+r*(ux*Math.cos(a)+vx*Math.sin(a)),p[1]+r*(uy*Math.cos(a)+vy*Math.sin(a)),p[2]+r*(uz*Math.cos(a)+vz*Math.sin(a)),col));}
+ }
+ for(let i=0;i<points.length-1;i++)for(let j=0;j<ns;j++){const a=i*(ns+1)+j,b=a+1,c=a+ns+1,d=c+1;faces.push([a,c,b],[b,c,d]);}
+ addMesh(group,verts,faces,opt);
+}
+function petal(n){
+ const theta=TAU*n/5 +.12, rx=Math.cos(theta),rz=Math.sin(theta),tx=-rz,tz=rx;const verts=[],faces=[],ns=22,nw=10;
+ for(let i=0;i<=ns;i++){let s=i/ns,baseR=.2+1.79*s+.08*Math.sin(PI*s),baseY=.10+2.10*s-.96*s*s;
+  const halfW=1.00*Math.pow(Math.sin(PI*s),.64)*(.77+.30*s);
+  for(let j=0;j<=nw;j++){let t=2*j/nw-1,w=t*halfW,ruffle=.06*Math.sin(s*5.5*PI+t*PI*.7)*Math.pow(s,2);
+   let r=baseR-.10*(1-t*t)*Math.sin(PI*s),y=baseY+.24*s*t*t-.09*(1-t*t)*Math.sin(PI*s)+ruffle;
+   const f=Math.min(1,s*.92+.11*Math.abs(t));const c=mix([255,205,151],[240,117,161],Math.min(1,f*.85));
+   const cc=mix(c,[204,53,116],Math.pow(Math.abs(t),3)*.22 + Math.max(0,s-.72)*.35);
+   verts.push(V(rx*r+tx*w,y,rz*r+tz*w,cc));
+  }
+ }
+ for(let i=0;i<ns;i++)for(let j=0;j<nw;j++){let a=i*(nw+1)+j,b=a+1,c=a+nw+1,d=c+1;faces.push([a,c,b],[b,c,d]);}
+ addMesh('petal',verts,faces,{instance:n,angle:theta});
+ // delicate, subtle midrib at base
+ const ve=[];for(let i=0;i<=10;i++){let s=.04+i/10*.65;ve.push([rx*(.2+1.79*s-.08*Math.sin(PI*s)),.10+2.10*s-.96*s*s-.08*Math.sin(PI*s)+.012,rz*(.2+1.79*s-.08*Math.sin(PI*s))])}
+ tube('petal',ve,.012,[248,183,158],5,{instance:n,angle:theta});
+}
+function sepal(n){
+ const theta=TAU*(n+.48)/5,rx=Math.cos(theta),rz=Math.sin(theta),tx=-rz,tz=rx,verts=[],faces=[],ns=14,nw=6;
+ for(let i=0;i<=ns;i++){let s=i/ns,half=.35*Math.pow(Math.sin(PI*s),.69),r=.21+1.27*s,y=-.03+.58*s-.17*s*s;
+ for(let j=0;j<=nw;j++){let u=j/nw*2-1;verts.push(V(rx*r+tx*u*half,y-.05*u*u*Math.sin(PI*s),rz*r+tz*u*half,mix([93,159,100],[71,143,92],s)));}}
+ for(let i=0;i<ns;i++)for(let j=0;j<nw;j++){let a=i*(nw+1)+j,b=a+1,c=a+nw+1,d=c+1;faces.push([a,c,b],[b,c,d]);}
+ addMesh('sepal',verts,faces,{instance:n,angle:theta});
+}
+function leaf(side,y){
+ // Two slender elliptical leaves branching from the kvetná stopka.
+ const theta=side===1?-.44:PI-.33,rx=Math.cos(theta),rz=Math.sin(theta),tx=-rz,tz=rx;
+ const verts=[],faces=[],ns=15,nw=6;
+ for(let i=0;i<=ns;i++){const s=i/ns,r=.11+1.21*s,yv=y+.51*s+.13*Math.sin(PI*s),half=.42*Math.pow(Math.sin(PI*s),.85);
+ for(let j=0;j<=nw;j++){let u=j/nw*2-1;verts.push(V(rx*r+tx*u*half,yv-.10*u*u*Math.sin(PI*s),rz*r+tz*u*half,mix([65,136,85],[94,171,105],s)));}}
+ for(let i=0;i<ns;i++)for(let j=0;j<nw;j++){let a=i*(nw+1)+j,b=a+1,c=a+nw+1,d=c+1;faces.push([a,c,b],[b,c,d]);}
+ addMesh('leaf',verts,faces,{instance:side,angle:theta});
+ tube('leaf',[[0,y-.03,0],[rx*.14,y+.05,rz*.14],[rx*.48,y+.21,rz*.48]],.039,[65,128,82],7,{instance:side,angle:theta});
+ const vein=[];for(let i=0;i<=9;i++){let s=i/9,rr=.11+1.21*s;vein.push([rx*rr,y+.51*s+.13*Math.sin(PI*s)+.012,rz*rr])}
+ tube('leaf',vein,.012,[159,196,121],5,{instance:side,angle:theta});
+}
+function ovaryHalf(){
+ // Longitudinally split half of an ovary, opening on plane z=0.
+ const cx=0,cy=.35,rx=.34,ry=.45,rz=.32,verts=[],faces=[],nu=22,nphi=13;
+ for(let iy=0;iy<=nphi;iy++){let phi=PI*iy/nphi;for(let iu=0;iu<=nu;iu++){let a=PI*iu/nu;verts.push(V(cx+rx*Math.sin(phi)*Math.cos(a),cy+ry*Math.cos(phi),-rz*Math.sin(phi)*Math.sin(a),[108,175,109]));}}
+ for(let i=0;i<nphi;i++)for(let j=0;j<nu;j++){let a=i*(nu+1)+j,b=a+1,c=a+nu+1,d=c+1;faces.push([a,b,c],[b,d,c]);}
+ addMesh('ovary',verts,faces,{cutOnly:true});
+ // Cream-colored oval plane represents tissue exposed by a lengthwise cut.
+ const cross=[V(0,cy,.005,[251,235,188])],f=[];const steps=40;
+ for(let i=0;i<=steps;i++){let a=TAU*i/steps;cross.push(V(.325*Math.cos(a),cy+.431*Math.sin(a),.005,[220,192,133]));}
+ for(let i=1;i<=steps;i++)f.push([0,i,i+1]);
+ addMesh('ovary',cross,f,{cutOnly:true});
+ // Two chambers (stylized dividing membrane) and a central placenta.
+ tube('ovary',[[0,.02,.025],[0,.35,.025],[0,.71,.025]],.015,[200,173,116],7,{cutOnly:true});
+ for(let iy=0;iy<4;iy++){const x=(iy%2===0?-.145:.145),y=.19+Math.floor(iy/2)*.27;
+ tube('ovule',[[0,y-.03,.025],[x*.75,y,.06]],.018,[184,166,99],7,{cutOnly:true});
+ sphere('ovule',x,y,.082,.074,.10,.047,[251,231,175],12,8,{cutOnly:true});}
+}
+function generate(){meshes=[];
+ tube('stem',[[0,-2.75,0],[0,-2.32,0],[.025,-1.66,-.02],[.01,-.95,0],[0,-.18,0]],(i,n)=>.090+.015*i/n,[70,135,86],13);
+ leaf(1,-1.65);leaf(-1,-2.22);
+ sphere('receptacle',0,-.075,0,.37,.255,.36,[114,174,105],18,11);
+ for(let i=0;i<5;i++)sepal(i);
+ for(let i=0;i<5;i++)petal(i);
+ // Ovary and inner reproductive anatomy
+ sphere('ovary',0,.37,0,.35,.445,.34,[124,187,112],18,12,{wholeOnly:true});
+ ovaryHalf();
+ for(let i=0;i<5;i++){
+  const a=TAU*(i+.22)/5,rx=Math.cos(a),rz=Math.sin(a);
+  const path=[[rx*.20,.12,rz*.20],[rx*.32,.43,rz*.32],[rx*.42,.82,rz*.42],[rx*.53,1.26,rz*.53],[rx*.51,1.45,rz*.51]];
+  tube('stamen',path,.035,[233,216,148],9,{instance:i,angle:a});
+  // Two pollen-bearing lobes form a legible anther.
+  const x=rx*.51,z=rz*.51,tax=-rz,taz=rx;
+  sphere('stamen',x+tax*.085,1.53,z+taz*.085,.078,.23,.078,[225,150,61],14,9,{instance:i,angle:a});
+  sphere('stamen',x-tax*.085,1.53,z-taz*.085,.078,.23,.078,[237,171,79],14,9,{instance:i,angle:a});
+ }
+ tube('style',[[0,.70,0],[.006,.93,0],[.024,1.27,.013],[.018,1.70,.012]],(i,n)=>.076-.017*i/n,[172,193,94],13);
+ sphere('stigma',.018,1.81,.012,.16,.12,.15,[203,190,93],17,10);
+ for(let i=0;i<3;i++){let a=TAU*i/3;sphere('stigma',.018+.09*Math.cos(a),1.82,.012+.09*Math.sin(a),.088,.08,.081,[221,198,111],12,8)}
+}
+generate();
+const anchors={petal:[1.31,1.04,.55],sepal:[-.91,.28,-.56],stamen:[.46,1.5,.22],stigma:[.02,1.88,.02],style:[.02,1.25,.01],ovary:[0,.37,0],ovule:[.14,.42,.08],receptacle:[.17,-.14,0],stem:[0,-1.75,0],leaf:[.7,-1.4,-.32]};
+const groups=Object.keys(PARTS);
+function offset(m){const f=state.explode*1.16;if(!f)return[0,0,0];let a=m.angle||0,idx=m.instance||0;
+ switch(m.group){case'petal':return[Math.cos(a)*.69*f,.18*f,Math.sin(a)*.69*f];case'sepal':return[Math.cos(a)*.73*f,-.2*f,Math.sin(a)*.73*f];case'stamen':return[Math.cos(a)*.52*f,.13*f,Math.sin(a)*.52*f];case'leaf':return[Math.cos(a)*.18*f,-.33*f,Math.sin(a)*.18*f];case'stem':return[0,-.43*f,0];case'stigma':return[0,.4*f,0];case'style':return[0,.29*f,0];case'ovary':case'ovule':return[0,-.15*f,0];case'receptacle':return[0,-.31*f,0];default:return[0,0,0];}
+}
+function camera(x,y,z){const cy=Math.cos(state.yaw),sy=Math.sin(state.yaw),cp=Math.cos(state.pitch),sp=Math.sin(state.pitch);
+ const xx=x*cy+z*sy,zz=-x*sy+z*cy,yy=y*cp-zz*sp,zz2=y*sp+zz*cp;
+ const base=Math.min(W/5.7,H/5.20)*state.zoom,scale=base*7.5/(7.5-zz2);
+ return{x:W*.50+xx*scale,y:H*.505-(yy+.39)*scale,z:zz2,scale,xx,yy,zz:zz2};
+}
+function resize(){const r=stage.getBoundingClientRect();W=Math.max(300,Math.round(r.width));H=Math.max(320,Math.round(r.height));dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);canvas.style.width=W+'px';canvas.style.height=H+'px';render()}
+function drawBG(){
+ const gx=ctx.createRadialGradient(W*.50,H*.55,8,W*.50,H*.55,Math.min(W,H)*.55);gx.addColorStop(0,'rgba(255,255,250,.42)');gx.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=gx;ctx.fillRect(0,0,W,H);
+ ctx.save();ctx.strokeStyle='rgba(106,158,127,.095)';ctx.lineWidth=1;
+ ctx.beginPath();ctx.ellipse(W*.5,H*.495,Math.min(W*.32,235),Math.min(H*.38,230),0,0,TAU);ctx.stroke();
+ ctx.beginPath();ctx.ellipse(W*.5,H*.495,Math.min(W*.39,292),Math.min(H*.46,289),0,0,TAU);ctx.stroke();ctx.restore();
+}
+let pickTriangles=[];
+function render(){
+ if(!W||!H)return;
+ ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);drawBG();const draw=[];
+ for(const m of meshes){if(!state.visibility[m.group])continue;if(m.wholeOnly&&state.cut||m.cutOnly&&!state.cut)continue;
+  const of=offset(m),vv=m.vertices.map(v=>{const p=camera(v.x+of[0],v.y+of[1],v.z+of[2]);return{...p,c:v.c}});
+  for(const tri of m.faces){const p=vv[tri[0]],q=vv[tri[1]],r=vv[tri[2]];
+   if(!p||!q||!r)continue;
+   const A={x:q.xx-p.xx,y:q.yy-p.yy,z:q.zz-p.zz},B={x:r.xx-p.xx,y:r.yy-p.yy,z:r.zz-p.zz};
+   const nx=A.y*B.z-A.z*B.y,ny=A.z*B.x-A.x*B.z,nz=A.x*B.y-A.y*B.x,nl=Math.hypot(nx,ny,nz)||1;
+   let lighting=.79+Math.max(0,(nx*.42+ny*.6+nz*.66)/nl)*.22;
+   if(state.selected&&state.mode==='study'&&state.selected===m.group)lighting=Math.min(1.28,lighting*1.09);
+   const c=[0,1,2].map(i=>Math.min(255,Math.max(0,Math.round((p.c[i]+q.c[i]+r.c[i])/3*lighting))));
+   const faded=state.selected&&state.mode==='study'&&state.selected!==m.group;
+   const alpha=faded?.31:1;
+   draw.push({p,q,r,depth:(p.z+q.z+r.z)/3,group:m.group,c,alpha});
+  }
+ }
+ draw.sort((a,b)=>a.depth-b.depth);pickTriangles=draw;
+ // A painter's algorithm renders every actual triangle: geometry responds to rotation and zoom in 3D.
+ for(const t of draw){ctx.beginPath();ctx.moveTo(t.p.x,t.p.y);ctx.lineTo(t.q.x,t.q.y);ctx.lineTo(t.r.x,t.r.y);ctx.closePath();ctx.globalAlpha=t.alpha;ctx.fillStyle=`rgb(${t.c.join(',')})`;ctx.fill();ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=.86;ctx.lineJoin='round';ctx.stroke();}
+ ctx.globalAlpha=1;
+ if(state.pollenActive)renderPollen(performance.now());
+ if(state.showLabels&&state.mode==='study')drawLabels();
+}
+function anchorFor(k){let p=anchors[k];if(!p)return null;
+ const approx={group:k,angle: k==='petal'?TAU*0/5+.12:k==='sepal'?TAU*.48/5: k==='stamen'?TAU*.22/5:0,instance:0};
+ let of=offset(approx);return camera(p[0]+of[0],p[1]+of[1],p[2]+of[2]);
+}
+function drawLabels(){const shown=['petal','sepal','stamen','stigma','style','ovary','stem'];if(state.cut)shown.splice(6,0,'ovule');
+ const labs=[];for(const k of shown){if(!state.visibility[k])continue;if(k==='ovary'&&state.visibility.petal&&state.explode<.43&&!state.cut)continue;const p=anchorFor(k);if(!p)continue;
+ const side=p.x < W*.49?-1:1;labs.push({k,p,side,y:p.y});}
+ for(const side of [-1,1]){
+  let items=labs.filter(a=>a.side===side).sort((a,b)=>a.y-b.y),last=62;
+  for(const l of items){l.labelY=Math.max(last+12,Math.min(H-82,l.y));last=l.labelY+28;}
+  if(items.length&&last>H-56){let shift=last-(H-56);for(const l of items)l.labelY-=shift;}
+ }
+ for(const l of labs){const sz=W<580?10:11,p=l.p,k=l.k,txt=PARTS[k].short,w=ctx.measureText(txt).width+24;
+  ctx.font=`700 ${sz}px system-ui, -apple-system, sans-serif`;
+  const ww=ctx.measureText(txt).width+22;
+  const anchorX=l.side<0?Math.max(14,p.x-35-ww):Math.min(W-ww-14,p.x+35),yy=l.labelY;
+  ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(l.side<0?anchorX+ww:anchorX,yy+9);ctx.strokeStyle='rgba(72,111,88,.45)';ctx.lineWidth=1.1;ctx.stroke();
+  ctx.beginPath();ctx.arc(p.x,p.y,3.1,0,TAU);ctx.fillStyle=PARTS[k].color;ctx.fill();ctx.beginPath();ctx.arc(p.x,p.y,5.7,0,TAU);ctx.strokeStyle='#fffef9';ctx.lineWidth=1.8;ctx.stroke();
+  ctx.fillStyle='rgba(255,255,252,.90)';roundRect(ctx,anchorX,yy-3,ww,24,8);ctx.fill();ctx.strokeStyle='#dae9db';ctx.lineWidth=.85;ctx.stroke();
+  ctx.fillStyle='#426b55';ctx.textBaseline='middle';ctx.fillText(txt,anchorX+11,yy+9);
+ }
+}
+function roundRect(c,x,y,w,h,r){r=Math.min(r,w/2,h/2);c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function bez(a,b,c,d,t){return (1-t)**3*a+3*(1-t)**2*t*b+3*(1-t)*t*t*c+t*t*t*d}
+function renderPollen(now){const t=Math.min(1,(now-state.pollenStart)/3100),a=TAU*.22/5,start=camera(Math.cos(a)*.51,1.68,Math.sin(a)*.51),end=camera(.018,1.82,.012),px=bez(start.x,start.x+48,end.x+70,end.x,t),py=bez(start.y,start.y-64,end.y-75,end.y,t);
+ ctx.save();const halo=ctx.createRadialGradient(px,py,0,px,py,18);halo.addColorStop(0,'rgba(245,171,42,.65)');halo.addColorStop(1,'rgba(245,171,42,0)');ctx.fillStyle=halo;ctx.beginPath();ctx.arc(px,py,18,0,TAU);ctx.fill();ctx.fillStyle='#eab548';ctx.strokeStyle='#fff8c8';ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py,6.7,0,TAU);ctx.fill();ctx.stroke();ctx.restore();
+ if(t>=1){state.pollenActive=false;showToast('Peľ sa dostal na bliznu: prebehlo opelenie. Oplodnenie je ďalší proces.');}
+}
+function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3600)}
+function partIcon(visible){return visible?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 3 21 21M10.6 5.9A11.2 11.2 0 0 1 12 6c6.5 0 10 6 10 6a19 19 0 0 1-3.1 3.6M6.3 7.5C3.5 9.2 2 12 2 12s3.5 6 10 6a11.5 11.5 0 0 0 4.3-.8"/></svg>'}
+function makeParts(){const root=$('parts');root.innerHTML='';for(const k of groups){const v=PARTS[k],el=document.createElement('div');el.className='part'+(state.selected===k?' active':'')+(!state.visibility[k]?' hiddenpart':'');el.setAttribute('data-group',k);
+ el.innerHTML=`<span class="dot" style="background:${v.color}"></span><span class="part-text"><strong>${v.name}</strong><small>${v.cat.toLowerCase()}</small></span><button class="visibility" aria-label="${state.visibility[k]?'Skryť':'Zobraziť'} ${v.name}" title="${state.visibility[k]?'Skryť':'Zobraziť'}">${partIcon(state.visibility[k])}</button>`;
+ el.addEventListener('click',e=>{if(e.target.closest('.visibility')){state.visibility[k]=!state.visibility[k];if(k==='ovule'&&state.visibility[k]&&!state.cut)state.cut=true;makeParts();setBtns();render();return}selectPart(k)});root.appendChild(el)} }
+function selectPart(k){if(state.mode==='quiz'){answer(k);return}if(k==='ovule'&&!state.cut){state.cut=true;setBtns()}if(!state.visibility[k])state.visibility[k]=true;state.selected=k;makeParts();updateInfo();render()}
+function updateInfo(){const k=state.selected||'petal',p=PARTS[k];$('infoName').textContent=p.name;$('infoCategory').textContent=p.cat;$('infoText').textContent=p.desc;$('infoFact').innerHTML='<strong>Vedeli ste?</strong> '+p.fact}
+function setBtns(){for(const [id,key] of [['labelsBtn','showLabels'],['cutBtn','cut'],['rotateBtn','rotate']]){const b=$(id);b.classList.toggle('active',!!state[key]);b.setAttribute('aria-pressed',String(!!state[key]))} }
+$('labelsBtn').onclick=()=>{state.showLabels=!state.showLabels;setBtns();render()};
+$('cutBtn').onclick=()=>{state.cut=!state.cut;state.selected=null;setBtns();makeParts();updateInfo();render();if(state.cut)showToast('Pozdĺžny rez semenníkom: vidno vajíčka vo vnútri.')};
+$('rotateBtn').onclick=()=>{state.rotate=!state.rotate;setBtns();if(state.rotate)requestAnimationFrame(tick)};
+$('pollenBtn').onclick=()=>{state.pollenActive=true;state.pollenStart=performance.now();requestAnimationFrame(tick);showToast('Opelenie: sleduj prenos peľu z prašníka na bliznu.')};
+$('reset').onclick=()=>{state.yaw=-.52;state.pitch=.42;state.zoom=1;state.selected=null;state.explode=0;state.cut=false;state.rotate=false;state.pollenActive=false;$('explode').value=0;$('explodeValue').textContent='0 %';groups.forEach(k=>state.visibility[k]=true);setBtns();makeParts();updateInfo();render()};
+$('explode').addEventListener('input',e=>{state.explode=Number(e.target.value)/100;$('explodeValue').textContent=e.target.value+' %';render()});
+function tick(now){if(state.rotate){let dt=lastTick?Math.min((now-lastTick)/1000,.06):.016;state.yaw+=dt*.30}lastTick=now;render();if(state.rotate||state.pollenActive)requestAnimationFrame(tick)}
+let down=null;
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);down={x:e.clientX,y:e.clientY,yaw:state.yaw,pitch:state.pitch,moved:false};canvas.classList.add('dragging')});
+canvas.addEventListener('pointermove',e=>{if(!down)return;let dx=e.clientX-down.x,dy=e.clientY-down.y;if(Math.hypot(dx,dy)>4)down.moved=true;state.yaw=down.yaw+dx*.0083;state.pitch=Math.max(-.82,Math.min(1.13,down.pitch+dy*.0069));render()});
+canvas.addEventListener('pointerup',e=>{canvas.classList.remove('dragging');if(down&&!down.moved){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;pick(x,y)}down=null});
+canvas.addEventListener('pointercancel',()=>{down=null;canvas.classList.remove('dragging')});
+canvas.addEventListener('wheel',e=>{e.preventDefault();state.zoom=Math.max(.62,Math.min(2.15,state.zoom*Math.exp(-e.deltaY*.001)));render()},{passive:false});
+// Touch-pinch zoom, including mobile devices.
+let activeTouches=new Map(),pinchBase=null;
+canvas.addEventListener('pointerdown',e=>{activeTouches.set(e.pointerId,{x:e.clientX,y:e.clientY});if(activeTouches.size===2){const p=[...activeTouches.values()];pinchBase={distance:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),zoom:state.zoom};down=null}},true);
+canvas.addEventListener('pointermove',e=>{if(activeTouches.has(e.pointerId))activeTouches.set(e.pointerId,{x:e.clientX,y:e.clientY});if(activeTouches.size===2&&pinchBase){const p=[...activeTouches.values()],dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);state.zoom=Math.max(.62,Math.min(2.15,pinchBase.zoom*dist/pinchBase.distance));render()}},true);
+['pointerup','pointercancel'].forEach(n=>canvas.addEventListener(n,e=>{activeTouches.delete(e.pointerId);if(activeTouches.size<2)pinchBase=null},true));
+function inTri(x,y,a,b,c){const den=(b.y-c.y)*(a.x-c.x)+(c.x-b.x)*(a.y-c.y);if(Math.abs(den)<.001)return false;const u=((b.y-c.y)*(x-c.x)+(c.x-b.x)*(y-c.y))/den,v=((c.y-a.y)*(x-c.x)+(a.x-c.x)*(y-c.y))/den;return u>=-.01&&v>=-.01&&u+v<=1.01}
+function pick(x,y){for(let i=pickTriangles.length-1;i>=0;i--){const t=pickTriangles[i];if(inTri(x,y,t.p,t.q,t.r)){selectPart(t.group);return}}if(state.mode==='study'){state.selected=null;makeParts();updateInfo();render()}}
+// Quiz uses the exact same three-dimensional selectable geometry as exploration.
+const quizParts=['petal','sepal','stamen','stigma','style','ovary','stem','receptacle'];let quizOrder=[],qi=0,correct=0,answered=false;
+function resetQuiz(){quizOrder=[...quizParts];for(let i=quizOrder.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[quizOrder[i],quizOrder[j]]=[quizOrder[j],quizOrder[i]]}qi=0;correct=0;answered=false;groups.forEach(k=>state.visibility[k]=true);state.cut=false;state.explode=0;$('explode').value=0;$('explodeValue').textContent='0 %';setBtns();makeParts();updateQuestion();render()}
+function updateQuestion(){const k=quizOrder[qi];groups.forEach(g=>state.visibility[g]=true);if(['sepal','ovary','receptacle'].includes(k))state.visibility.petal=false;if(k==='receptacle'){state.visibility.sepal=false;state.visibility.ovary=false}$('qProgress').textContent=`OTÁZKA ${qi+1} / ${quizOrder.length}`;$('qScore').textContent=correct+' BODOV';$('scoreFill').style.width=(qi/quizOrder.length*100)+'%';$('qQuestion').textContent='Nájdi: '+PARTS[k].name.toLowerCase()+'.';$('qFeedback').textContent='Klikni priamo na správnu časť kvetu.';$('nextQuestion').disabled=true;$('nextQuestion').textContent='Ďalšia otázka →';answered=false}
+function answer(k){if(answered)return;const expected=quizOrder[qi];if(k===expected){answered=true;correct++;$('qScore').textContent=correct+' BODOV';$('qFeedback').textContent='✓ Správne! '+PARTS[k].desc;$('qFeedback').style.color='#26734c';$('nextQuestion').disabled=false;$('scoreFill').style.width=((qi+1)/quizOrder.length*100)+'%';$('nextQuestion').textContent=qi===quizOrder.length-1?'Zobraziť výsledok →':'Ďalšia otázka →'}else{$('qFeedback').textContent='To je '+PARTS[k].name.toLowerCase()+'. Skús označiť inú časť.';$('qFeedback').style.color='#ab7041'}}
+function advanceQuiz(){
+ if(!answered)return;
+ if(answered==='done'){resetQuiz();return}
+ if(qi<quizOrder.length-1){qi++;updateQuestion();render();return}
+ $('qProgress').textContent='KVÍZ DOKONČENÝ';
+ $('qQuestion').textContent=`Výsledok: ${correct} / ${quizOrder.length}`;
+ $('qFeedback').textContent='Výborne! Teraz môžeš precvičovanie spustiť znova alebo preskúmať ďalšie časti kvetu.';
+ $('nextQuestion').textContent='Zopakovať kvíz ↻';$('nextQuestion').disabled=false;answered='done';
+}
+$('nextQuestion').onclick=advanceQuiz;
+$('restartQuiz').onclick=()=>{resetQuiz();$('nextQuestion').onclick=advanceQuiz};
+for(const btn of document.querySelectorAll('.tab'))btn.addEventListener('click',()=>{const target=btn.dataset.tab;state.mode=target;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t===btn));$('study').hidden=target!=='study';$('quiz').hidden=target!=='quiz';state.selected=null;if(target==='quiz'){resetQuiz();$('nextQuestion').onclick=advanceQuiz}else{groups.forEach(g=>state.visibility[g]=true);makeParts();updateInfo()}render()});
+window.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;switch(e.key){case'ArrowLeft':state.yaw-=.16;break;case'ArrowRight':state.yaw+=.16;break;case'ArrowUp':state.pitch=Math.max(-.82,state.pitch-.1);break;case'ArrowDown':state.pitch=Math.min(1.13,state.pitch+.1);break;case'+':state.zoom=Math.min(2.15,state.zoom*1.1);break;case'-':state.zoom=Math.max(.62,state.zoom/1.1);break;default:return}e.preventDefault();render()});
+makeParts();updateInfo();setBtns();resetQuiz();state.mode='study';
+const observer=new ResizeObserver(resize);observer.observe(stage);requestAnimationFrame(resize);
+</script>
+</body></html>
