@@ -387,6 +387,7 @@ const observer=new ResizeObserver(resize);observer.observe(stage);requestAnimati
  </div>
  <button type="button" id="arStartXRTop">📱 Spustiť kameru a AR na lavici</button><div id="arAim" aria-hidden="true"></div><button type="button" id="arPlaceOnSurface">✓ Položiť kvet na lavicu</button>
  <div id="arError" class="ar-error" role="alert"></div><div id="focusTapRing" aria-hidden="true"></div>
+ <canvas id="arLabelsCanvas" aria-hidden="true"></canvas>
  <div class="ar-bottom">
   <div id="arMessage" class="ar-message" role="status" aria-live="polite">Pripravujem 3D scénu…</div>
   <button type="button" class="ar-quit" id="arPanelToggle" style="min-height:38px">Skryť ovládanie ▾</button>
@@ -400,6 +401,7 @@ const observer=new ResizeObserver(resize);observer.observe(stage);requestAnimati
    </div>
    <div class="ar-line"><label for="arExplode">Rozloženie</label><input id="arExplode" type="range" min="0" max="100" value="0"><span id="arExplodeVal">0 %</span></div>
    <div class="ar-line"><label for="arScale">Veľkosť kvetu</label><input id="arScale" type="range" min="55" max="170" value="100"><span id="arScaleVal">100 %</span></div>
+   <div class="ar-line"><label for="arBrightness">Jas modelu</label><input id="arBrightness" type="range" min="55" max="115" value="82"><span id="arBrightnessVal">82 %</span></div>
    <div class="ar-line"><label for="arPart">Preskúmaj časť</label><select id="arPart"><option value="">– vyber orgán –</option></select></div>
    <div id="arDetails" class="ar-details">Vyber časť kvetu a pozri si jej biologickú funkciu.</div>
    <div class="ar-inline-buttons">
@@ -429,7 +431,7 @@ const observer=new ResizeObserver(resize);observer.observe(stage);requestAnimati
 (function () {
 'use strict';
 const el=id=>document.getElementById(id);
-const S={mode:null,scene:null,anchor:null,group:null,items:[],labelSprites:{},cut:false,explode:0,scale:100,showLabels:true,visible:{},selected:'',quiz:false,questionIndex:0,score:0,answered:false,tracked:false,xrActive:false,surfaceFound:false,surfaceTimer:null,manual:false};
+const S={mode:null,scene:null,anchor:null,group:null,items:[],labelSprites:{},labelAnchors:{},labelLoop:false,cut:false,explode:0,scale:100,brightness:82,showLabels:true,visible:{},selected:'',quiz:false,questionIndex:0,score:0,answered:false,tracked:false,xrActive:false,surfaceFound:false,surfaceTimer:null,manual:false};
 const G=Object.keys(PARTS);
 for(const k of G){S.visible[k]=true;state.visibility[k]=true;}
 // Pri pôvodnej inicializácii kvízu môže byť náhodne skrytá koruna.
@@ -614,50 +616,56 @@ const LABEL_POSITIONS={
  stem:[1.35,.2,.12],
  leaf:[2.05,.82,.25]
 };
-function createLabelSprite(key){
- const T=AFRAME.THREE, part=PARTS[key];
- const canvas=document.createElement('canvas');
- canvas.width=512; canvas.height=128;
- const c=canvas.getContext('2d');
- c.clearRect(0,0,canvas.width,canvas.height);
- c.fillStyle='rgba(255,255,255,0.92)';
- c.strokeStyle='rgba(38,84,66,0.22)';
- c.lineWidth=6;
- const x=10,y=14,w=492,h=92,r=28;
- c.beginPath();
- c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.quadraticCurveTo(x+w,y,x+w,y+r);
- c.lineTo(x+w,y+h-r); c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
- c.lineTo(x+r,y+h); c.quadraticCurveTo(x,y+h,x,y+h-r);
- c.lineTo(x,y+r); c.quadraticCurveTo(x,y,x+r,y); c.closePath();
- c.fill(); c.stroke();
- c.fillStyle='rgba(36,85,65,1)';
- c.font='700 34px Inter, Arial, sans-serif';
- c.textBaseline='middle';
- c.fillText(part.short||part.name,34,58);
- c.fillStyle='rgba(112,138,123,1)';
- c.font='600 18px Inter, Arial, sans-serif';
- c.fillText(part.cat,34,92);
- const texture=new T.CanvasTexture(canvas);
- texture.minFilter=T.LinearFilter; texture.generateMipmaps=false;
- const material=new T.SpriteMaterial({map:texture,transparent:true,depthTest:false,depthWrite:false});
- const sprite=new T.Sprite(material);
- sprite.userData.part=key;
- sprite.scale.set(3.4,0.9,1);
- const p=LABEL_POSITIONS[key]||[1.4,1.5,0]; sprite.position.set(...p);
- sprite.renderOrder=999;
- return sprite;
+function roundRectPath(c,x,y,w,h,r){r=Math.min(r,w/2,h/2);c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function drawARLabels(){
+ const canvas=el('arLabelsCanvas'); if(!canvas||!S.scene||!S.group)return;
+ const host=el('arHost'); const rect=host.getBoundingClientRect();
+ const dpr=Math.max(1,window.devicePixelRatio||1);
+ const w=Math.max(1,Math.round(rect.width)), h=Math.max(1,Math.round(rect.height));
+ if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);canvas.style.width=w+'px';canvas.style.height=h+'px';}
+ const c=canvas.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+ if(!S.showLabels||S.quiz||!el('arOverlay').classList.contains('active')) return;
+ const cam=(S.scene.renderer?.xr?.isPresenting ? S.scene.renderer.xr.getCamera(S.scene.camera) : S.scene.camera);
+ if(!cam) return;
+ const T=AFRAME.THREE; const keys=['petal','sepal','stamen','stigma','style','ovary','stem']; if(S.cut) keys.splice(6,0,'ovule');
+ const labs=[];
+ for(const k of keys){
+   if(S.visible[k]===false) continue;
+   if(k==='ovary'&&S.visible.petal&&S.explode<43&&!S.cut) continue;
+   const anchor=S.labelAnchors[k]; if(!anchor) continue;
+   const v=new T.Vector3(); anchor.getWorldPosition(v); v.project(cam);
+   if(v.z>1||v.z<-1) continue;
+   const x=(v.x*0.5+0.5)*w, y=(-v.y*0.5+0.5)*h;
+   const side=x < w*0.49 ? -1 : 1; labs.push({k,x,y,side,depth:v.z});
+ }
+ labs.sort((a,b)=>a.depth-b.depth);
+ for(const side of [-1,1]){
+   let items=labs.filter(a=>a.side===side).sort((a,b)=>a.y-b.y), last=62;
+   for(const l of items){ l.labelY=Math.max(last+12, Math.min(h-82,l.y)); last=l.labelY+28; }
+   if(items.length && last>h-56){ const shift=last-(h-56); for(const l of items) l.labelY-=shift; }
+ }
+ c.font=`700 ${w<580?10:11}px system-ui, -apple-system, sans-serif`; c.textBaseline='middle';
+ for(const l of labs){
+   const txt=PARTS[l.k].short; const ww=c.measureText(txt).width+22; const anchorX=l.side<0?Math.max(14,l.x-35-ww):Math.min(w-ww-14,l.x+35), yy=l.labelY;
+   c.beginPath(); c.moveTo(l.x,l.y); c.lineTo(l.side<0?anchorX+ww:anchorX,yy+9); c.strokeStyle='rgba(72,111,88,.52)'; c.lineWidth=1.15; c.stroke();
+   c.beginPath(); c.arc(l.x,l.y,3.1,0,Math.PI*2); c.fillStyle=PARTS[l.k].color; c.fill(); c.beginPath(); c.arc(l.x,l.y,5.7,0,Math.PI*2); c.strokeStyle='#fffef9'; c.lineWidth=1.8; c.stroke();
+   c.fillStyle='rgba(255,255,252,.92)'; roundRectPath(c,anchorX,yy-3,ww,24,8); c.fill(); c.strokeStyle='#dae9db'; c.lineWidth=.85; c.stroke();
+   c.fillStyle='#426b55'; c.fillText(txt,anchorX+11,yy+9);
+ }
 }
+function startARLabelLoop(){ if(S.labelLoop) return; S.labelLoop=true; const step=()=>{ if(!S.labelLoop) return; drawARLabels(); requestAnimationFrame(step);}; requestAnimationFrame(step);}
+function stopARLabelLoop(){ S.labelLoop=false; const canvas=el('arLabelsCanvas'); if(canvas){ const c=canvas.getContext('2d'); c.clearRect(0,0,canvas.width,canvas.height);} }
 function updateARLabels(){
  if(!S.group)return;
- for(const [key,sprite] of Object.entries(S.labelSprites)){
-  if(!sprite) continue;
-  const visible=(S.visible[key]!==false) && S.showLabels && !S.quiz && (!(key==='ovule'||key==='ovary') || S.cut || key==='ovary');
-  sprite.visible=!!visible;
-  let p=(LABEL_POSITIONS[key]||[1.4,1.5,0]).slice();
-  const pseudo={group:key,angle:(key==='petal'?0:key==='sepal'?0:key==='leaf'?-0.2:0)};
-  if(key==='ovary'||key==='ovule'||key==='stigma'||key==='style'||key==='stem'||key==='receptacle') pseudo.angle=0;
-  const d=separation(pseudo); p[0]+=d[0]; p[1]+=d[1]; p[2]+=d[2];
-  sprite.position.set(p[0],p[1],p[2]);
+ for(const [key,obj] of Object.entries(S.labelAnchors)){
+   if(!obj) continue;
+   const visible=(S.visible[key]!==false) && (!(key==='ovule'||key==='ovary') || S.cut || key==='ovary');
+   obj.visible=!!visible;
+   let p=(LABEL_POSITIONS[key]||[1.4,1.5,0]).slice();
+   const pseudo={group:key,angle:(key==='petal'?0:key==='sepal'?0:key==='leaf'?-0.2:0)};
+   if(key==='ovary'||key==='ovule'||key==='stigma'||key==='style'||key==='stem'||key==='receptacle') pseudo.angle=0;
+   const d=separation(pseudo); p[0]+=d[0]; p[1]+=d[1]; p[2]+=d[2];
+   obj.position.set(p[0],p[1],p[2]);
  }
  const btn=el('arLabels');
  if(btn){btn.textContent=S.showLabels?'🏷 Názvy: zapnuté':'🏷 Názvy: vypnuté'; btn.classList.toggle('on',S.showLabels);}
@@ -673,9 +681,9 @@ function createFlower(){
   const object=new T.Mesh(geom,material);object.userData.part=m.group;object.userData.source=m;object.frustumCulled=false;
   root.add(object);S.items.push(object);
  }
- S.labelSprites={};
+ S.labelAnchors={};
  for(const key of Object.keys(LABEL_POSITIONS)){
-  const sprite=createLabelSprite(key); S.labelSprites[key]=sprite; root.add(sprite);
+  const anchor=new T.Object3D(); anchor.userData.part=key; const p=LABEL_POSITIONS[key]; anchor.position.set(p[0],p[1],p[2]); S.labelAnchors[key]=anchor; root.add(anchor);
  }
  S.group=root;return root;
 }
@@ -685,12 +693,13 @@ function applyModel(){if(!S.group)return;
  for(const o of S.items){const m=o.userData.source,k=m.group;
   o.visible=S.visible[k]!==false && (!m.cutOnly||S.cut) && (!m.wholeOnly||!S.cut);
   const d=separation(m);o.position.set(...d);
+  o.material.color.setScalar(S.brightness/100);
   if(S.selected&&k===S.selected)o.material.emissive.setHex(0x4a2f24);else o.material.emissive.setHex(0x0f1110);
  }
  updateARLabels();
  el('arPetals').textContent=S.visible.petal?'Skryť korunu':'Zobraziť korunu';el('arPetals').classList.toggle('on',!S.visible.petal);
  el('arCut').classList.toggle('on',S.cut);el('arQuiz').classList.toggle('on',S.quiz);
- el('arExplodeVal').textContent=S.explode+' %';el('arScaleVal').textContent=S.scale+' %';
+ el('arExplodeVal').textContent=S.explode+' %';el('arScaleVal').textContent=S.scale+' %'; el('arBrightnessVal').textContent=S.brightness+' %';
 }
 function updateText(){if(S.quiz){const key=quizzes[S.questionIndex%quizzes.length];el('arDetails').innerHTML='<b>Kvíz: otázka '+(S.questionIndex+1)+' / '+quizzes.length+' · '+S.score+' bodov</b>Ukáž v zozname alebo ťuknutím na model: '+PARTS[key].name+'.';return}
  if(!S.selected){el('arDetails').textContent='Vyber orgán v zozname alebo ťukni priamo na časť kvetu (mimo režimu snímania povrchu).';return}
@@ -711,9 +720,10 @@ function setupClicks(){
  el('arShowAll').onclick=()=>{for(const k of G)S.visible[k]=true;S.cut=false;S.selected='';el('arPart').value='';applyModel();updateText()};
  el('arExplode').oninput=e=>{S.explode=Number(e.target.value);applyModel()};
  el('arScale').oninput=e=>{S.scale=Number(e.target.value);applyModel()};
+ el('arBrightness').oninput=e=>{S.brightness=Number(e.target.value);applyModel()};
  el('arPart').onchange=e=>{if(e.target.value)choosePart(e.target.value);else{S.selected='';applyModel();updateText()}};
  el('arQuiz').onclick=()=>{S.quiz=!S.quiz;S.questionIndex=0;S.score=0;S.answered=false;S.selected='';if(S.quiz){for(const k of G)S.visible[k]=true;S.visible.petal=false;S.cut=true;}applyModel();updateText()};
- el('arReset').onclick=()=>{for(const k of G)S.visible[k]=true;S.explode=0;S.scale=100;S.cut=false;S.quiz=false;S.selected='';S.showLabels=true;el('arExplode').value=0;el('arScale').value=100;el('arPart').value='';applyModel();updateText()};
+ el('arReset').onclick=()=>{for(const k of G)S.visible[k]=true;S.explode=0;S.scale=100;S.cut=false;S.quiz=false;S.selected='';S.showLabels=true;S.brightness=82;el('arExplode').value=0;el('arScale').value=100;el('arBrightness').value=82;el('arPart').value='';applyModel();updateText()};
 }
 function markerEvents(){const marker=el('flowerMarker');marker.addEventListener('markerFound',()=>{S.tracked=true;tracking('Značka HIRO: rozpoznaná');if(!autoCollapsed){autoCollapsed=true;toggleControls(false)}notice('Značka rozpoznaná. Obíď kvet s mobilom a skúmaj jeho orgány.');});
  marker.addEventListener('markerLost',()=>{S.tracked=false;tracking('Značka HIRO: hľadajú sa body');notice('Značka zmizla zo záberu. Namier kameru na celú štvorcovú značku HIRO.');});
@@ -913,7 +923,7 @@ function createScene(mode){
  scene.addEventListener('loaded',()=>{
   if(scene.canvas){scene.canvas.style.background='transparent';}
   S.anchor=el('flowerAnchor');S.anchor.object3D.add(createFlower());
-  applyModel();setupClicks();updateText();arSceneReady=true;
+  applyModel();setupClicks();updateText();startARLabelLoop();arSceneReady=true;
   // Detektor „flower-surface-hit“ je pripojený ešte pred vstupom do WebXR;
   // nevypočítava žiadny komplikovaný pôdorys modelu.
 
