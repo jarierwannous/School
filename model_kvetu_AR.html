@@ -57,6 +57,23 @@ body.ar-active{overflow:hidden}body.ar-active .app{visibility:hidden}
 @media print{body>*:not(#printMarker){display:none!important}#printMarker{display:block!important}.print-page{display:flex!important;align-items:center;flex-direction:column;padding:12mm;color:#111!important}.print-page img{width:135mm;height:135mm;object-fit:contain;image-rendering:pixelated}.print-page h1{font-family:Arial,sans-serif;text-align:center;font-size:22pt;margin:0 0 15mm}.print-page p{font:12pt Arial,sans-serif}}
 #printMarker{display:none}
 
+/* OPRAVA: Kamera AR.js musí byť pod TRANSPARENTNÝM WebGL plátnom,
+   nie za nepriehľadným pozadím. Videoprvok presunieme do #arVideoLayer. */
+#arHost.marker-mode{background:#071c18!important}
+#arHost.marker-mode #arVideoLayer{position:absolute;inset:0;z-index:1;overflow:hidden;background:#071c18;pointer-events:none}
+#arHost.marker-mode #arVideoLayer video,
+#arHost.marker-mode #arVideoLayer #arjs-video{display:block!important;visibility:visible!important;opacity:1!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;z-index:1!important}
+#arHost.marker-mode a-scene{z-index:2!important;background:transparent!important;pointer-events:auto}
+#arHost.marker-mode a-scene .a-canvas{background:transparent!important;pointer-events:auto}
+#arHost.marker-mode a-scene canvas{background:transparent!important}
+#arStartXRTop{display:none;position:absolute;top:calc(env(safe-area-inset-top) + 74px);left:50%;transform:translateX(-50%);width:min(85vw,320px);z-index:900;padding:16px 15px;border-radius:16px;background:#216d51;color:white;border:2px solid #e8fff1;box-shadow:0 9px 24px #0003;font-size:15px;font-weight:850;text-align:center;pointer-events:auto}
+#cameraTester{position:fixed;inset:0;z-index:1200;background:#11251e;display:none;color:white;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:18px}
+#cameraTester.active{display:flex}
+#cameraTester video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#101c18}
+#cameraTestInfo{position:absolute;bottom:80px;left:14px;right:14px;text-align:center;background:#153f36e9;padding:13px;border-radius:14px;line-height:1.55;font-size:14px}
+#cameraTestClose{position:absolute;top:calc(env(safe-area-inset-top) + 18px);right:14px;border:0;border-radius:12px;background:white;color:#234b3b;padding:12px 17px;font-weight:850;font-size:14px}
+
+
 </style>
 </head>
 <body>
@@ -68,6 +85,7 @@ body.ar-active{overflow:hidden}body.ar-active .app{visibility:hidden}
   <div class="ar-prompt"><strong>🌸 Pozri si kvet priamo na lavici!</strong><br>Rozšírená realita: dva spôsoby pozorovania toho istého 3D modelu.<div class="ar-hint">3D applet vyššie funguje aj offline. AR vyžaduje HTTPS, kameru a internet na načítanie knižníc.</div></div>
   <button class="btn-ar" id="modeSurface" type="button">📱 AR bez značky</button>
   <button class="btn-ar secondary" id="modeMarker" type="button">▣ AR so značkou</button>
+  <button class="btn-ar secondary" id="cameraTestEntry" type="button">📷 Otestovať kameru</button>
   <button class="btn-ar secondary" id="printEntry" type="button">⎙ Vytlačiť značku</button>
 </div>
 
@@ -331,12 +349,18 @@ makeParts();updateInfo();setBtns();resetQuiz();state.mode='study';
 const observer=new ResizeObserver(resize);observer.observe(stage);requestAnimationFrame(resize);
 </script>
 
+<div id="cameraTester" aria-label="Samostatný test kamery">
+ <video id="cameraTestVideo" autoplay muted playsinline></video>
+ <button id="cameraTestClose" type="button">✕ Zavrieť kameru</button>
+ <div id="cameraTestInfo" role="status">Žiadam o prístup ku kamere…</div>
+</div>
 <div id="arHost" aria-label="Pohľad cez kameru s modelom kvetu"></div>
 <div id="arOverlay" aria-label="Ovládanie rozšírenej reality">
  <div class="ar-topbar">
   <div class="ar-brand"><strong id="arModeLabel">🌸 Kvet v rozšírenej realite</strong><small id="arTopHelp">Načítavam AR…</small></div>
   <button type="button" class="ar-quit" id="arClose">✕ Ukončiť AR</button>
  </div>
+ <button type="button" id="arStartXRTop">📱 Spustiť kameru a AR na lavici</button>
  <div id="arError" class="ar-error" role="alert"></div>
  <div class="ar-bottom">
   <div id="arMessage" class="ar-message" role="status" aria-live="polite">Pripravujem 3D scénu…</div>
@@ -384,11 +408,77 @@ for(const k of G){S.visible[k]=true;state.visibility[k]=true;}
 makeParts();render();
 const quizzes=['petal','sepal','stamen','stigma','style','ovary','ovule','receptacle'];
 let arSceneReady=false,autoCollapsed=false;
+let markerWatch=null, markerVideoFound=false, cameraStream=null, markerLoadTimer=null;
 function toggleControls(show){el('arPanel').classList.toggle('collapsed',!show);el('arPanelToggle').textContent=show?'Skryť ovládanie ▾':'Zobraziť ovládanie ▴'}
 el('arPanelToggle').onclick=()=>toggleControls(el('arPanel').classList.contains('collapsed')); 
 function notice(t){el('arMessage').textContent=t}
 function error(t){el('arError').textContent=t;el('arError').style.display='block'}
 function clearError(){el('arError').style.display='none'}
+// Overenie kamery nezávislé od 3D knižníc; slúži na rozlíšenie
+// blokovaného povolenia od problému s vrstvami WebGL.
+function cameraFailure(e){
+ if(e?.message&&/(HTTPS|file:\/\/|zabezpečenú)/i.test(e.message))return e.message;
+ const name=e&&e.name||'';
+ if(!navigator.mediaDevices?.getUserMedia)return 'Prehliadač nepodporuje prístup ku kamere cez túto stránku. Otvor HTTPS adresu v Chrome.';
+ if(name==='NotAllowedError'||name==='PermissionDeniedError'||name==='SecurityError')return 'Prístup ku kamere bol zamietnutý. V Chrome otvor nastavenia tejto stránky → Povolenia → Kamera → Povoliť. Over aj povolenie kamery pre Chrome v Androide.';
+ if(name==='NotFoundError'||name==='DevicesNotFoundError')return 'Prehliadač nenašiel kameru. Skontroluj zariadenie a jeho nastavenia.';
+ if(name==='NotReadableError'||name==='TrackStartError')return 'Kamera je obsadená alebo nedostupná. Zatvor iné aplikácie používajúce kameru a obnov stránku.';
+ return 'Kamera sa nespustila'+(e?.message?': '+e.message:'. Skús Chrome a obnov stránku.');
+}
+function cameraPrerequisite(){
+ if(location.protocol==='file:')throw new Error('Súbor je otvorený lokálne (file://). Pre AR použi HTTPS na GitHub Pages, nie prehliadač súborov.');
+ if(!window.isSecureContext)throw new Error('Kamera vyžaduje zabezpečenú HTTPS stránku (GitHub Pages).');
+ if(!navigator.mediaDevices?.getUserMedia)throw new Error('Táto stránka alebo prehliadač neposkytuje prístup ku kamere.');
+}
+async function previewCamera(){
+ el('cameraTester').classList.add('active');el('cameraTestInfo').textContent='Pripravujem kameru; keď sa zobrazí žiadosť o povolenie, potvrď ju.';
+ try{
+  cameraPrerequisite();
+  const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
+  if(!el('cameraTester').classList.contains('active')){stream.getTracks().forEach(t=>t.stop());return;}
+  cameraStream=stream;
+  const video=el('cameraTestVideo');video.srcObject=stream;video.muted=true;video.playsInline=true;
+  await video.play();el('cameraTestInfo').textContent='✓ Kamera funguje. Ak sa v AR nezobrazí obraz, chyba je v AR vykresľovaní, nie v oprávneniach kamery.';
+ }catch(e){el('cameraTestInfo').textContent=cameraFailure(e);}
+}
+function closePreview(){
+ if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+ const v=el('cameraTestVideo');v.pause();v.srcObject=null;el('cameraTester').classList.remove('active');
+}
+el('cameraTestEntry').onclick=previewCamera;
+el('arStartXRTop').onclick=()=>el('arStartXR').click();
+el('cameraTestClose').onclick=closePreview;
+function attachMarkerVideo(){
+ // AR.js pridáva video obyčajne do document.body; umiestnime ho do
+ // explicitnej spodnej vrstvy, kde nemôže byť zakryté pozadím a-scene.
+ const v=document.querySelector('#arjs-video')||document.querySelector('video.arjs-video');
+ const layer=el('arVideoLayer');
+ if(!v||!layer)return false;
+ if(v.parentNode!==layer)layer.appendChild(v);
+ v.setAttribute('playsinline','');v.setAttribute('autoplay','');v.muted=true;
+ markerVideoFound=true;
+ if(v.readyState>=2)notice('✓ Kamera je pripravená. Namier ju na celú značku HIRO.');
+ return true;
+}
+function startMarkerWatch(){
+ markerVideoFound=false;
+ // Udalosti sú uvedené v oficiálnom rozhraní AR.js.
+ const onCamOk=()=>{attachMarkerVideo();notice('✓ Kamera povolená. Namier ju na značku HIRO.')};
+ const onVideo=()=>{attachMarkerVideo();};
+ const onCamFail=e=>error(cameraFailure(e?.detail?.error||e?.error||e));
+ document.addEventListener('camera-init',onCamOk);
+ document.addEventListener('arjs-video-loaded',onVideo);
+ window.addEventListener('camera-error',onCamFail);
+ document.addEventListener('camera-error',onCamFail);
+ markerWatch=new MutationObserver(()=>{if(!markerVideoFound)attachMarkerVideo()});
+ markerWatch.observe(document.body,{subtree:true,childList:true});
+ // Ak sa do 12 sekúnd ani neobjaví videoprvok, daj žiakovi jasnú informáciu.
+ clearTimeout(markerLoadTimer);
+ markerLoadTimer=setTimeout(()=>{
+  const v=el('arVideoLayer')?.querySelector('video');
+  if(!v||!v.videoWidth)error('Obraz z kamery sa nespustil. Skús najprv „Otestovať kameru“ na úvodnej obrazovke, povoľ kameru v Chrome a znova otvor AR.');
+ },12000);
+}
 function scripts(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=false;s.onload=resolve;s.onerror=()=>reject(Error('Nepodarilo sa načítať externú knižnicu '+src));document.head.appendChild(s)})}
 function printHiro(){const img=el('hiroPrintImage'); if(!img.complete||!img.naturalWidth){if(!confirm('Pre načítanie tlačovej značky potrebuješ internet. Ak sa obrázok ešte nenačítal, otvorí sa originálny obrázok. Pokračovať?'))return;window.open(img.src,'_blank','noopener');return;}window.print()}
 function home(){location.href=location.href.split('?')[0].split('#')[0]}
@@ -461,28 +551,32 @@ function pickFlower(event){ // výber pomocou lúča kamery, ak nie sme vo fáze
 }
 function createScene(mode){
  const host=el('arHost');host.innerHTML='';
+ if(mode==='marker'){const bg=document.createElement('div');bg.id='arVideoLayer';host.appendChild(bg);startMarkerWatch();}
  const scene=document.createElement('a-scene');S.scene=scene;scene.id='flowerARScene';
  scene.setAttribute('embedded','');scene.setAttribute('renderer','antialias: true; colorManagement: true; alpha: true');
  scene.setAttribute('loading-screen','enabled: false');
+ scene.style.background='transparent';
+ scene.setAttribute('background','transparent: true');
  if(mode==='marker'){
   scene.setAttribute('xr-mode-ui','enabled: false');
-  scene.setAttribute('arjs','sourceType: webcam; debugUIEnabled: false; trackingMethod: best; detectionMode: mono_and_matrix;');
+  scene.setAttribute('arjs','sourceType: webcam; videoTexture: false; debugUIEnabled: false; trackingMethod: best; detectionMode: mono_and_matrix;');
   scene.innerHTML='<a-marker id="flowerMarker" preset="hiro" emitevents="true" smooth="true" smooth-count="5"><a-entity id="flowerAnchor"></a-entity></a-marker><a-entity camera></a-entity><a-entity light="type: ambient; intensity: 1.65; color: #ffffff"></a-entity><a-entity light="type: directional; intensity: .60; color: #fff4e5" position="-1 3 2"></a-entity>';
  }else{
   scene.setAttribute('xr-mode-ui','XRMode: ar; enabled: true; enterAREnabled: true; enterVREnabled: false');
-  scene.setAttribute('webxr','requiredFeatures: hit-test; optionalFeatures: dom-overlay; overlayElement: #arOverlay; referenceSpaceType: local-floor');
+  scene.setAttribute('webxr','requiredFeatures: hit-test; optionalFeatures: dom-overlay; overlayElement: #arOverlay; referenceSpaceType: local');
   scene.setAttribute('ar-hit-test','target: #flowerAnchor; type: footprint;');
   scene.innerHTML='<a-entity id="flowerAnchor" position="0 0 -1.2" visible="false"></a-entity><a-entity camera position="0 1.6 0" look-controls="enabled: true"></a-entity><a-entity light="type: ambient; intensity: 1.65"></a-entity><a-entity light="type: directional; intensity: .7" position="-1 3 2"></a-entity>';
   scene.addEventListener('ar-hit-test-achieved',()=>notice('Povrch rozpoznaný. Ťukni na lavicu na mieste, kam chceš položiť kvet.'));
   scene.addEventListener('ar-hit-test-select',()=>notice('Kvet je umiestnený. Teraz môžeš chodiť okolo neho a preskúmať jeho orgány.'));
-  scene.addEventListener('enter-vr',()=>{if(scene.is('ar-mode')){S.xrActive=true;toggleControls(false);el('arStartXR').style.display='none';el('arLeaveXR').style.display='inline-block';const anchor=el('flowerAnchor');anchor.setAttribute('visible',false);notice('Pohybuj mobilom a nájdi rovný povrch. Potom ťukni na lavicu.')}});
-  scene.addEventListener('exit-vr',()=>{S.xrActive=false;el('arLeaveXR').style.display='none';el('arStartXR').style.display='inline-block';notice('AR ukončené. Môžeš ho znova spustiť.');});
+  scene.addEventListener('enter-vr',()=>{if(scene.is('ar-mode')){S.xrActive=true;toggleControls(false);el('arStartXR').style.display='none';el('arStartXRTop').style.display='none';el('arLeaveXR').style.display='inline-block';const anchor=el('flowerAnchor');anchor.setAttribute('visible',false);notice('Pohybuj mobilom a nájdi rovný povrch. Potom ťukni na lavicu.')}});
+  scene.addEventListener('exit-vr',()=>{S.xrActive=false;el('arLeaveXR').style.display='none';el('arStartXR').style.display='inline-block';el('arStartXRTop').style.display='block';notice('AR ukončené. Môžeš ho znova spustiť.');});
  }
  scene.addEventListener('loaded',()=>{
+  if(scene.canvas){scene.canvas.style.background='transparent';}
   S.anchor=el('flowerAnchor');S.anchor.object3D.add(createFlower());
   applyModel();setupClicks();updateText();arSceneReady=true;
   if(mode==='marker'){markerEvents();notice('Povoľ kameru a namier ju na vytlačenú značku HIRO.');}
-  else{notice('Pre rozpoznanie lavice stlač „Spustiť AR na lavici“.');el('arStartXR').style.display='inline-block';
+  else{notice('Kamera sa zapne až po stlačení zeleného tlačidla „Spustiť kameru a AR na lavici“.');el('arStartXR').style.display='inline-block';el('arStartXRTop').style.display='block';
     const check=()=>navigator.xr?.isSessionSupported('immersive-ar').then(ok=>{if(!ok)error('Tento prehliadač alebo mobil nepodporuje WebXR AR. Vyskúšaj Chrome na kompatibilnom Androide alebo režim so značkou.');}).catch(()=>error('Podporu WebXR sa nepodarilo overiť. Skús Chrome na Androide.'));
     if(navigator.xr)check();else error('WebXR nie je dostupné. Skús Android s ARCore a Chrome; režim so značkou môže fungovať aj na ďalších mobiloch.');
   }
@@ -507,12 +601,13 @@ async function start(mode){
  el('arTopHelp').textContent=mode==='marker'?'Hľadaj vzor HIRO':'WebXR · vyhľadanie lavice';
  el('arPrint').style.display=mode==='marker'?'inline-block':'none';
  notice('Načítavam AR knižnice (vyžaduje internet)…');
- if(!window.isSecureContext){error('AR kamera potrebuje HTTPS (napr. GitHub Pages) alebo localhost. Súbor otvorený priamo cez file:// nepovolí mobilnú kameru.');}
  try{
+  if(mode==='marker')cameraPrerequisite();
+  else if(!window.isSecureContext||location.protocol==='file:')throw new Error('AR vyžaduje HTTPS stránku. Otvor súbor cez GitHub Pages, nie lokálne.');
   if(!window.AFRAME)await scripts('https://aframe.io/releases/1.6.0/aframe.min.js');
   if(mode==='marker')await scripts('https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js');
   createScene(mode);
- }catch(e){error(e.message+' Skontroluj internetové pripojenie a skús znova.');notice('AR knižnica sa nenačítala. Pôvodný 3D model je stále dostupný.');}
+ }catch(e){error(e.message||'AR sa nepodarilo inicializovať.');notice('AR sa nespustilo. Použi test kamery alebo pôvodné 3D zobrazenie.');}
 }
 // Autostart pre URL typu .../model_kvetu_AR.html?ar=marker, použiteľný v QR kódoch.
 const params=new URLSearchParams(location.search);const auto=params.get('ar');if(auto==='marker'||auto==='surface')start(auto);
