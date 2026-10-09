@@ -616,6 +616,10 @@ const LABEL_POSITIONS={
  stem:[1.35,.2,.12],
  leaf:[2.05,.82,.25]
 };
+const LABEL_HINTS={
+ petal:[1,0,0], sepal:[1,0,0], stamen:[1,0.3,0], stigma:[0,1,0], style:[1,0,0],
+ ovary:[1,0,0], ovule:[1,0,0], receptacle:[1,0,0], stem:[1,0,0], leaf:[1,0,0]
+};
 function roundRectPath(c,x,y,w,h,r){r=Math.min(r,w/2,h/2);c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
 function drawARLabels(){
  const canvas=el('arLabelsCanvas'); if(!canvas||!S.scene||!S.group)return;
@@ -655,17 +659,43 @@ function drawARLabels(){
 }
 function startARLabelLoop(){ if(S.labelLoop) return; S.labelLoop=true; const step=()=>{ if(!S.labelLoop) return; drawARLabels(); requestAnimationFrame(step);}; requestAnimationFrame(step);}
 function stopARLabelLoop(){ S.labelLoop=false; const canvas=el('arLabelsCanvas'); if(canvas){ const c=canvas.getContext('2d'); c.clearRect(0,0,canvas.width,canvas.height);} }
+function recomputeLabelAnchors(){
+ if(!S.group)return;
+ for(const key of Object.keys(S.labelAnchors)){
+  const anchor=S.labelAnchors[key];
+  if(!anchor) continue;
+  let minX=Infinity,minY=Infinity,minZ=Infinity,maxX=-Infinity,maxY=-Infinity,maxZ=-Infinity,found=false;
+  for(const o of S.items){
+   if(o.userData.source.group!==key || !o.visible) continue;
+   const g=o.geometry; if(!g.boundingBox) g.computeBoundingBox();
+   const b=g.boundingBox, ox=o.position.x, oy=o.position.y, oz=o.position.z;
+   minX=Math.min(minX,b.min.x+ox); minY=Math.min(minY,b.min.y+oy); minZ=Math.min(minZ,b.min.z+oz);
+   maxX=Math.max(maxX,b.max.x+ox); maxY=Math.max(maxY,b.max.y+oy); maxZ=Math.max(maxZ,b.max.z+oz);
+   found=true;
+  }
+  if(!found){
+   const p=LABEL_POSITIONS[key]||[1.4,1.5,0]; anchor.position.set(p[0],p[1],p[2]); anchor.visible=false; continue;
+  }
+  const cx=(minX+maxX)/2, cy=(minY+maxY)/2, cz=(minZ+maxZ)/2;
+  const hint=LABEL_HINTS[key]||[1,0,0];
+  const px=hint[0]>0.5?maxX:hint[0]<-0.5?minX:cx;
+  const py=hint[1]>0.5?maxY:hint[1]<-0.5?minY:cy;
+  const pz=hint[2]>0.5?maxZ:hint[2]<-0.5?minZ:cz;
+  let ex=0,ey=0,ez=0;
+  if(key==='stigma') ey=0.05; else if(key==='style') ex=0.04;
+  else if(key==='stamen') { ex=0.02; ey=0.02; }
+  else if(key==='ovary') ex=0.03; else if(key==='ovule') ex=0.02;
+  else if(key==='stem') ex=0.03; else if(key==='petal'||key==='sepal'||key==='leaf'||key==='receptacle') ex=0.04;
+  anchor.position.set(px+ex,py+ey,pz+ez); anchor.visible=true;
+ }
+}
 function updateARLabels(){
  if(!S.group)return;
+ recomputeLabelAnchors();
  for(const [key,obj] of Object.entries(S.labelAnchors)){
    if(!obj) continue;
-   const visible=(S.visible[key]!==false) && (!(key==='ovule'||key==='ovary') || S.cut || key==='ovary');
-   obj.visible=!!visible;
-   let p=(LABEL_POSITIONS[key]||[1.4,1.5,0]).slice();
-   const pseudo={group:key,angle:(key==='petal'?0:key==='sepal'?0:key==='leaf'?-0.2:0)};
-   if(key==='ovary'||key==='ovule'||key==='stigma'||key==='style'||key==='stem'||key==='receptacle') pseudo.angle=0;
-   const d=separation(pseudo); p[0]+=d[0]; p[1]+=d[1]; p[2]+=d[2];
-   obj.position.set(p[0],p[1],p[2]);
+   const visible=(S.visible[key]!==false) && S.showLabels && !S.quiz && (!(key==='ovule'||key==='ovary') || S.cut || key==='ovary');
+   obj.visible=!!(visible && obj.visible);
  }
  const btn=el('arLabels');
  if(btn){btn.textContent=S.showLabels?'🏷 Názvy: zapnuté':'🏷 Názvy: vypnuté'; btn.classList.toggle('on',S.showLabels);}
