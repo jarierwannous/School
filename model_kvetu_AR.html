@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="theme-color" content="#f7faf5" />
-<title>Stavba kvetu – 3D a AR s diagnostikou povrchu</title>
+<title>Stavba kvetu – 3D a AR s kontrolou ostrenia</title>
 <style>
 :root{--ink:#1d3932;--muted:#72837a;--forest:#255e4c;--line:#e2ebe3;--paper:#fffdfa;--pale:#f1f7ef;--pink:#d94e87;--shadow:0 10px 35px rgba(27,62,48,.07)}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:#f6f8f3}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:3px solid #84bdaa;outline-offset:3px}
@@ -78,6 +78,17 @@ body.ar-active{overflow:hidden}body.ar-active .app{visibility:hidden}
 #arAim{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:46px;height:46px;border:2px dashed rgba(255,255,255,.85);border-radius:50%;filter:drop-shadow(0 1px 2px #0007);display:none;pointer-events:none}
 #arAim::after{content:'+';position:absolute;inset:0;text-align:center;line-height:39px;font-size:24px;color:#fff;font-weight:500}
 #arAim.visible{display:block}
+/* Ovládanie zaostrenia: dostupné iba pre getUserMedia (test + HIRO).
+   AR bez značky používa kameru systému WebXR, nie MediaStreamTrack. */
+#cameraFocusControls{position:absolute;bottom:150px;left:16px;right:16px;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+#cameraFocusControls>*{pointer-events:auto}
+#cameraFocusControls button{padding:11px 17px;background:#fff;color:#235943;border:none;border-radius:11px;font-weight:850;box-shadow:0 5px 18px #0005}
+#cameraFocusStatus{font-size:12px;line-height:1.35;background:#103b32dd;color:#fff;padding:9px 12px;border-radius:10px;text-align:center;max-width:95%}
+#arFocusNow{display:none}
+#arFocusStatus{display:block;font-size:10px;font-weight:600;line-height:1.4;margin-top:5px;color:#496d59}
+#focusTapRing{display:none;position:fixed;width:58px;height:58px;z-index:760;pointer-events:none;transform:translate(-50%,-50%);border:2px solid #eaffb2;border-radius:50%;box-shadow:0 0 0 3px #0c3d3180;animation:focusPulse .65s ease-out}
+@keyframes focusPulse{from{scale:1.24;opacity:1}to{scale:.80;opacity:0}}
+#cameraTestVideo{cursor:crosshair}
 #cameraTestClose{position:absolute;top:calc(env(safe-area-inset-top) + 18px);right:14px;border:0;border-radius:12px;background:white;color:#234b3b;padding:12px 17px;font-weight:850;font-size:14px}
 
 
@@ -358,17 +369,21 @@ const observer=new ResizeObserver(resize);observer.observe(stage);requestAnimati
 
 <div id="cameraTester" aria-label="Samostatný test kamery">
  <video id="cameraTestVideo" autoplay muted playsinline></video>
+ <div id="cameraFocusControls">
+  <button id="cameraFocusNow" type="button">◎ Skúsiť zaostriť</button>
+  <div id="cameraFocusStatus" role="status">Ťukni na obraz alebo zvoľ zaostrenie</div>
+ </div>
  <button id="cameraTestClose" type="button">✕ Zavrieť kameru</button>
  <div id="cameraTestInfo" role="status">Žiadam o prístup ku kamere…</div>
 </div>
 <div id="arHost" aria-label="Pohľad cez kameru s modelom kvetu"></div>
 <div id="arOverlay" aria-label="Ovládanie rozšírenej reality">
  <div class="ar-topbar">
-  <div class="ar-brand"><strong id="arModeLabel">🌸 Kvet v rozšírenej realite</strong><small id="arTopHelp">Načítavam AR…</small><div id="arTrackingStatus" role="status">Priestorové sledovanie: čaká</div></div>
+  <div class="ar-brand"><strong id="arModeLabel">🌸 Kvet v rozšírenej realite</strong><small id="arTopHelp">Načítavam AR…</small><div id="arTrackingStatus" role="status">Priestorové sledovanie: čaká</div><small id="arFocusStatus"></small></div>
   <button type="button" class="ar-quit" id="arClose">✕ Ukončiť AR</button>
  </div>
  <button type="button" id="arStartXRTop">📱 Spustiť kameru a AR na lavici</button><div id="arAim" aria-hidden="true"></div>
- <div id="arError" class="ar-error" role="alert"></div>
+ <div id="arError" class="ar-error" role="alert"></div><div id="focusTapRing" aria-hidden="true"></div>
  <div class="ar-bottom">
   <div id="arMessage" class="ar-message" role="status" aria-live="polite">Pripravujem 3D scénu…</div>
   <button type="button" class="ar-quit" id="arPanelToggle" style="min-height:38px">Skryť ovládanie ▾</button>
@@ -391,6 +406,7 @@ const observer=new ResizeObserver(resize);observer.observe(stage);requestAnimati
      <button type="button" id="arLeaveXR" style="display:none">⤫ Vystúpiť z AR</button>
      <button type="button" id="arFallback">🌸 Zobraziť kvet predo mnou</button>
      <button type="button" id="arRetrySurface">◎ Skúsiť rozpoznať lavicu znova</button>
+     <button type="button" id="arFocusNow">◎ Skúsiť zaostriť kameru</button>
    </div>
   </div>
  </div>
@@ -418,6 +434,73 @@ makeParts();render();
 const quizzes=['petal','sepal','stamen','stigma','style','ovary','ovule','receptacle'];
 let arSceneReady=false,autoCollapsed=false;
 let markerWatch=null, markerVideoFound=false, cameraStream=null, markerLoadTimer=null;
+let focusBusy=false, lastFocusRing=null;
+// Rozhranie MediaStreamTrack umožňuje vyžiadať ostrenie, ale nie je dostupné vo WebXR.
+function videoTrack(video){return video?.srcObject?.getVideoTracks?.()[0]||null;}
+function focusCapabilities(track){try{return track?.getCapabilities?.()||{}}catch{return {}}}
+function focusModes(track){const m=focusCapabilities(track).focusMode;return Array.isArray(m)?m:[]}
+function focusReport(video){
+ const t=videoTrack(video),settings=t?.getSettings?.()||{};
+ const w=video?.videoWidth||settings.width||'?';const h=video?.videoHeight||settings.height||'?';
+ const m=focusModes(t);
+ return {t,m,detail:`Obraz ${w} × ${h}${m.length?' · režimy ostrenia: '+m.join(', '):' · ovládanie ostrenia nehlási prehliadač'}`};
+}
+function focusMessage(text,kind){
+ if(kind==='marker')el('arFocusStatus').textContent=text;
+ else el('cameraFocusStatus').textContent=text;
+}
+function tapRing(x,y){
+ const ring=el('focusTapRing');if(!ring)return;
+ ring.style.left=x+'px';ring.style.top=y+'px';ring.style.display='block';
+ ring.style.animation='none';void ring.offsetWidth;ring.style.animation='focusPulse .65s ease-out';
+ clearTimeout(lastFocusRing);lastFocusRing=setTimeout(()=>{ring.style.display='none'},680);
+}
+// Žiadosť o preostrenie. Chrome v Androide môže sprístupniť continuous/single-shot;
+// skutočný focus bod a vzdialenosť však prehliadače často nepodporujú.
+async function requestCameraFocus(video,kind,point){
+ const {t,m,detail}=focusReport(video);
+ if(!t){focusMessage('Čakám na video zo zadnej kamery…',kind);return;}
+ if(focusBusy)return;
+ focusBusy=true;
+ try{
+  const supported=navigator.mediaDevices?.getSupportedConstraints?.()||{};
+  const attempts=[];
+  const mode=m.includes('single-shot')?'single-shot':m.includes('continuous')?'continuous':null;
+  if(mode){
+   // Skutočný bod záujmu využijeme iba ak ho webový prehliadač deklaruje.
+   if(point&&supported.pointsOfInterest){
+    const vw=video.videoWidth||640,vh=video.videoHeight||480;
+    const ox=Math.round(point.x*vw),oy=Math.round(point.y*vh);
+    attempts.push({advanced:[{focusMode:mode,pointsOfInterest:[{x:ox,y:oy}]}]});
+   }
+   attempts.push({advanced:[{focusMode:mode}]});
+  }
+  let applied=false,usedPoint=false;
+  for(const a of attempts){try{await t.applyConstraints(a);applied=true;usedPoint=!!a.advanced[0].pointsOfInterest;break}catch(e){/* skúšame jednoduchší režim */}}
+  // Ojedinele nie je focusMode v capabilities, ale aplikovanie je možné.
+  if(!applied&&m.length===0&&supported.focusMode){
+   try{await t.applyConstraints({advanced:[{focusMode:'continuous'}]});applied=true}catch(e){}
+  }
+  if(applied)focusMessage(`${usedPoint?'✓ Požiadavka na bodové zaostrenie odoslaná.':'✓ Požiadavka na automatické zaostrovanie odoslaná.'} ${detail}. Výsledok závisí od telefónu.`,kind);
+  else focusMessage(`Priame ovládanie zaostrenia nie je v tomto prehliadači dostupné. ${detail}. Skús väčší odstup a viac svetla.`,kind);
+ }finally{focusBusy=false;}
+}
+async function startContinuousFocus(video,kind){
+ const {t,m,detail}=focusReport(video);
+ if(!t)return;
+ let requested=false;
+ if(m.includes('continuous')){
+  try{await t.applyConstraints({advanced:[{focusMode:'continuous'}]});requested=true}catch(e){}
+ }
+ focusMessage(`${requested?'Automatické zaostrovanie vyžiadané. ':'Automatické zaostrovanie riadi prehliadač. '}${detail}`,kind);
+}
+function focusPointFromEvent(video,event){
+ const r=video.getBoundingClientRect();
+ const x=Math.max(0,Math.min(1,(event.clientX-r.left)/r.width));
+ const y=Math.max(0,Math.min(1,(event.clientY-r.top)/r.height));
+ return {x,y};
+}
+
 function toggleControls(show){el('arPanel').classList.toggle('collapsed',!show);el('arPanelToggle').textContent=show?'Skryť ovládanie ▾':'Zobraziť ovládanie ▴'}
 el('arPanelToggle').onclick=()=>toggleControls(el('arPanel').classList.contains('collapsed')); 
 function notice(t){el('arMessage').textContent=t}
@@ -454,11 +537,11 @@ async function previewCamera(){
  el('cameraTester').classList.add('active');el('cameraTestInfo').textContent='Pripravujem kameru; keď sa zobrazí žiadosť o povolenie, potvrď ju.';
  try{
   cameraPrerequisite();
-  const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
+  const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});
   if(!el('cameraTester').classList.contains('active')){stream.getTracks().forEach(t=>t.stop());return;}
   cameraStream=stream;
   const video=el('cameraTestVideo');video.srcObject=stream;video.muted=true;video.playsInline=true;
-  await video.play();el('cameraTestInfo').textContent='✓ Kamera funguje. Ak sa v AR nezobrazí obraz, chyba je v AR vykresľovaní, nie v oprávneniach kamery.';
+  await video.play();el('cameraTestInfo').textContent='✓ Kamera funguje. Pozri, či je tento obraz ostrý, a porovnaj ho s AR. Ťukni na obraz a vyskúšaj ostrenie.';await startContinuousFocus(video,'test');
  }catch(e){el('cameraTestInfo').textContent=cameraFailure(e);}
 }
 function closePreview(){
@@ -466,6 +549,9 @@ function closePreview(){
  const v=el('cameraTestVideo');v.pause();v.srcObject=null;el('cameraTester').classList.remove('active');
 }
 el('cameraTestEntry').onclick=previewCamera;
+el('cameraFocusNow').onclick=()=>requestCameraFocus(el('cameraTestVideo'),'test');
+el('cameraTestVideo').addEventListener('click',e=>{tapRing(e.clientX,e.clientY);requestCameraFocus(el('cameraTestVideo'),'test',focusPointFromEvent(el('cameraTestVideo'),e))});
+el('arFocusNow').onclick=()=>requestCameraFocus(el('arVideoLayer')?.querySelector('video'),'marker');
 el('arStartXRTop').onclick=()=>el('arStartXR').click();
 el('cameraTestClose').onclick=closePreview;
 function attachMarkerVideo(){
@@ -477,7 +563,8 @@ function attachMarkerVideo(){
  if(v.parentNode!==layer)layer.appendChild(v);
  v.setAttribute('playsinline','');v.setAttribute('autoplay','');v.muted=true;
  markerVideoFound=true;
- if(v.readyState>=2)notice('✓ Kamera je pripravená. Namier ju na celú značku HIRO.');
+  if(v.readyState>=2){notice('✓ Kamera je pripravená. Namier ju na celú značku HIRO.');startContinuousFocus(v,'marker');}
+  else v.addEventListener('loadedmetadata',()=>startContinuousFocus(v,'marker'),{once:true});
  return true;
 }
 function startMarkerWatch(){
@@ -579,7 +666,9 @@ function createScene(mode){
  scene.setAttribute('background','transparent: true');
  if(mode==='marker'){
   scene.setAttribute('xr-mode-ui','enabled: false');
-  scene.setAttribute('arjs','sourceType: webcam; videoTexture: false; debugUIEnabled: false; trackingMethod: best; detectionMode: mono_and_matrix;');
+  // Vyššie požadované rozlíšenie: pôvodných 640x480 je na mobile viditeľne rozmazaných po zväčšení.
+  // Kamerové API môže použiť nižšie rozlíšenie, ak vyššie nie je dostupné.
+  scene.setAttribute('arjs','sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720; videoTexture: false; debugUIEnabled: false; trackingMethod: best; detectionMode: mono_and_matrix;');
   scene.innerHTML='<a-marker id="flowerMarker" preset="hiro" emitevents="true" smooth="true" smooth-count="5"><a-entity id="flowerAnchor"></a-entity></a-marker><a-entity camera></a-entity><a-entity light="type: ambient; intensity: 1.65; color: #ffffff"></a-entity><a-entity light="type: directional; intensity: .60; color: #fff4e5" position="-1 3 2"></a-entity>';
  }else{
   scene.setAttribute('xr-mode-ui','XRMode: ar; enabled: true; enterAREnabled: true; enterVREnabled: false');
@@ -642,6 +731,11 @@ function createScene(mode){
     if(navigator.xr)check();else error('WebXR nie je dostupné. Skús Android s ARCore a Chrome; režim so značkou môže fungovať aj na ďalších mobiloch.');
   }
   scene.addEventListener('click',pickFlower);
+  if(mode==='marker'){scene.addEventListener('pointerup',e=>{
+   // Ťuknutie na pohľad HIRO vyžiada opätovné zaostrenie, neprekrýva kvíz.
+   const v=el('arVideoLayer')?.querySelector('video');if(!v)return;
+   tapRing(e.clientX,e.clientY);requestCameraFocus(v,'marker',focusPointFromEvent(v,e));
+  });}
  });
  host.appendChild(scene);
 }
@@ -695,7 +789,10 @@ async function start(mode){
  document.body.classList.add('ar-active');if(mode==='marker')document.body.classList.add('marker-session');el('arHost').classList.add('active');if(mode==='marker')el('arHost').classList.add('marker-mode');el('arOverlay').classList.add('active');clearError();
  el('arModeLabel').textContent=mode==='marker'?'▣ Kvet · AR so značkou':'🌸 Kvet · AR bez značky';
  el('arTopHelp').textContent=mode==='marker'?'Hľadaj vzor HIRO':'WebXR · vyhľadanie lavice';
- el('arPrint').style.display=mode==='marker'?'inline-block':'none';tracking(mode==='marker'?'Značka HIRO: čakám na kameru':'WebXR: kontrolujem podporu');
+ el('arPrint').style.display=mode==='marker'?'inline-block':'none';
+ el('arFocusNow').style.display=mode==='marker'?'inline-block':'none';
+ el('arFocusStatus').textContent=mode==='marker'?'Kamera HIRO: po štarte preverím ostrenie. Ťukni na obraz alebo použi tlačidlo.':'V AR bez značky riadi ostrenie systém ARCore. WebXR neponúka ovládanie zaostrenia ťuknutím.';
+ tracking(mode==='marker'?'Značka HIRO: čakám na kameru':'WebXR: kontrolujem podporu');
  notice('Načítavam AR knižnice (vyžaduje internet)…');
  try{
   if(mode==='marker')cameraPrerequisite();
