@@ -30,7 +30,7 @@ button,select{font:inherit;border:1px solid #c9d4e2;background:#fff;color:var(--
 button{font-weight:700;cursor:pointer}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button.good{background:var(--ok);border-color:var(--ok);color:#fff}button:disabled{opacity:.45;cursor:not-allowed}
 .segment{display:flex;gap:5px;padding:4px;background:#eef2f8;border-radius:12px;flex-wrap:wrap}.segment button{border:0;background:transparent;min-height:36px;padding:7px 11px}.segment button.active{background:#fff;color:var(--accent);box-shadow:0 1px 6px #172a4a1b}
 .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{font-size:12px;color:#4c5d72;background:#f7f9fc;border:1px solid var(--line);border-radius:999px;padding:6px 9px}
-.arPanel{display:none;margin-top:12px;padding:12px;border-radius:12px;border:1px solid #dbe3ee;background:#f8fafc}.arPanel.show{display:block}.arGrid{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;align-items:center}.arGrid label{font-size:13px;font-weight:700}.arHelp{font-size:13px;color:#52637a;line-height:1.45;margin-top:9px}.arButtonSlot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.arButtonSlot button{position:static!important;width:auto!important;height:auto!important;border-radius:10px!important;font:700 14px system-ui!important;padding:10px 14px!important;opacity:1!important}
+.arPanel{display:none;margin-top:12px;padding:12px;border-radius:12px;border:1px solid #dbe3ee;background:#f8fafc}.arPanel.show{display:block}.arGrid{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;align-items:center}.arGrid label{font-size:13px;font-weight:700}.arHelp{font-size:13px;color:#52637a;line-height:1.45;margin-top:9px}.arButtonSlot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.arButtonSlot button,.arButtonSlot a{position:static!important;width:auto!important;height:auto!important;border-radius:10px!important;font:700 14px system-ui!important;padding:10px 14px!important;opacity:1!important;text-decoration:none!important}.arDiag{margin-top:10px;border:1px solid var(--line);border-radius:11px;padding:9px 11px;background:#fff}.arDiag strong{display:block;font-size:13px;margin-bottom:6px}.diagRow{display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:12px;border-bottom:1px dashed #e4e9f0}.diagRow:last-child{border-bottom:0}.diagOk{color:#08783f;font-weight:700}.diagBad{color:#b42332;font-weight:700}.diagWarn{color:#946000;font-weight:700}
 .graphTop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px}.graphTitle strong{display:block;font-size:15px}.small{font-size:12px;color:var(--muted)}
 #graph{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:12px;background:#fff;touch-action:none}
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;color:#5b697b;font-size:12px}.sw{display:inline-block;width:18px;height:3px;background:#315efb;vertical-align:middle;margin-right:5px}.sw.user{background:#111}
@@ -86,9 +86,19 @@ button{font-weight:700;cursor:pointer}button.primary{background:var(--accent);bo
             <option value="0.1">Stôl 1 : 10 (1 m = 10 cm)</option>
           </select>
           <label>Spustenie AR</label>
-          <div class="arButtonSlot" id="arButtonSlot"><span class="small">Pripravujem WebXR…</span></div>
+          <div class="arButtonSlot" id="arButtonSlot"><button type="button" id="startAr" class="primary">📷 Spustiť AR</button></div>
         </div>
-        <div class="arHelp"><b>AR ovládanie:</b> pohybuj mobilom, kým sa objaví kruhový zameriavač. Prvým ťuknutím položíš dráhu na podlahu alebo stôl. Ďalším ťuknutím spustíš alebo zopakuješ pohyb. Ak WebXR nie je podporovaný, 3D režim ostáva plne funkčný.</div>
+        <div class="arDiag" id="arDiag">
+          <strong>AR diagnostika</strong>
+          <div class="diagRow"><span>Adresa stránky</span><span id="diagProtocol">kontrolujem…</span></div>
+          <div class="diagRow"><span>Bezpečný kontext (HTTPS)</span><span id="diagSecure">kontrolujem…</span></div>
+          <div class="diagRow"><span>WebXR API</span><span id="diagWebxr">kontrolujem…</span></div>
+          <div class="diagRow"><span>Režim immersive-ar</span><span id="diagAr">kontrolujem…</span></div>
+          <div class="diagRow"><span>XR session</span><span id="diagSession">nespustená</span></div>
+          <div class="diagRow"><span>Prístup ku kamere cez Camera API</span><span id="diagCamera">netestované</span></div>
+          <div class="controls" style="margin-top:8px"><button type="button" id="cameraTest">📷 Otestovať povolenie kamery</button></div>
+        </div>
+        <div class="arHelp" id="arHelp"><b>AR ovládanie:</b> pohybuj mobilom, kým sa objaví kruhový zameriavač. Prvým ťuknutím položíš dráhu na podlahu alebo stôl. Ďalším ťuknutím spustíš alebo zopakuješ pohyb. WebXR AR musí byť otvorené cez <b>HTTPS</b> (alebo localhost), nie ako stiahnutý súbor <code>file://</code>.</div>
       </div>
     </div>
   </section>
@@ -126,7 +136,6 @@ button{font-weight:700;cursor:pointer}button.primary{background:var(--accent);bo
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { ARButton } from 'three/addons/webxr/ARButton.js';
 
 const $ = id => document.getElementById(id);
 const WORLD = {min:0,max:12};
@@ -240,7 +249,7 @@ function animate(){
  if(!renderer.xr.isPresenting){controls.enabled=displayMode==='3d';controls.update()}
  renderer.render(scene,camera)
 }
-renderer.setAnimationLoop(animate);
+// Hlavný render loop sa nastavuje nižšie, kde spracúvame aj WebXR frame a hit-test.
 
 function graphXY(t,val){const x=GM.l+t/scenario.T*(GW-GM.l-GM.r);let lo,hi;if(graphMode==='s'){lo=0;hi=12}else if(graphMode==='v'){lo=-4;hi=4}else{lo=-1.25;hi=1.25}return [x,GH-GM.b-(val-lo)/(hi-lo)*(GH-GM.t-GM.b)]}
 function ticks(){return graphMode==='s'?{v:[0,2,4,6,8,10,12],lab:'s [m]'}:graphMode==='v'?{v:[-4,-3,-2,-1,0,1,2,3,4],lab:'v [m/s]'}:{v:[-1,-.5,0,.5,1],lab:'a [m/s²]'}}
@@ -263,21 +272,92 @@ controller.addEventListener('select',()=>{
  if(!arPlaced&&reticle.visible){const placedScale=new THREE.Vector3();reticle.matrix.decompose(arRoot.position,arRoot.quaternion,placedScale);arRoot.scale.setScalar(arScale);arRoot.visible=true;arPlaced=true;pausedAt=0;running=false;setSim(0);$('status').textContent='Dráha položená. Ťukni ešte raz a spustíš pohyb.';return}
  if(arPlaced)replay();
 });
-renderer.xr.addEventListener('sessionstart',()=>{scene.background=null;arPlaced=false;arRoot.visible=false;reticle.visible=false;pausedAt=0;running=false;$('status').textContent='Pohybuj mobilom a nájdi podlahu alebo stôl.'});
-renderer.xr.addEventListener('sessionend',()=>{reticle.visible=false;hitTestSource=null;hitTestSourceRequested=false;arPlaced=false;arRoot.visible=false;desktopRoot.visible=displayMode==='3d';$('status').textContent='AR ukončené.'});
+renderer.xr.addEventListener('sessionstart',()=>{scene.background=null;arPlaced=false;arRoot.visible=false;reticle.visible=false;pausedAt=0;running=false;setDiag('diagSession','spustená','ok');const b=$('startAr');if(b){b.disabled=true;b.textContent='AR je spustené';}$('status').textContent='Pohybuj mobilom a nájdi podlahu alebo stôl.'});
+renderer.xr.addEventListener('sessionend',()=>{reticle.visible=false;if(hitTestSource?.cancel)hitTestSource.cancel();hitTestSource=null;hitTestSourceRequested=false;arPlaced=false;arRoot.visible=false;desktopRoot.visible=displayMode==='3d';setDiag('diagSession','ukončená','warn');const b=$('startAr');if(b){b.disabled=false;b.textContent='📷 Spustiť AR';}$('status').textContent='AR ukončené.';});
 
 renderer.setAnimationLoop((time,frame)=>{
  resizeRenderer();
  if(running){pausedAt=performance.now()/1000-simBase;if(pausedAt>=scenario.T){pausedAt=scenario.T;running=false;$('status').textContent='Pohyb skončil. Nakresli graf.'}setSim(pausedAt)}
- if(renderer.xr.isPresenting&&frame){const session=renderer.xr.getSession();if(!hitTestSourceRequested){session.requestReferenceSpace('viewer').then(space=>session.requestHitTestSource({space})).then(src=>{hitTestSource=src});session.addEventListener('end',()=>{hitTestSourceRequested=false;hitTestSource=null});hitTestSourceRequested=true}if(hitTestSource&&!arPlaced){const ref=renderer.xr.getReferenceSpace(),hits=frame.getHitTestResults(hitTestSource);if(hits.length){const pose=hits[0].getPose(ref);reticle.visible=true;reticle.matrix.fromArray(pose.transform.matrix)}else reticle.visible=false}}
+ if(renderer.xr.isPresenting&&frame){const session=renderer.xr.getSession();if(!hitTestSourceRequested){session.requestReferenceSpace('viewer').then(space=>session.requestHitTestSource({space})).then(src=>{hitTestSource=src;$('status').textContent='AR aktívne hľadá povrch…';}).catch(err=>{$('status').textContent='AR beží, ale hit-test zlyhal: '+(err.message||err.name);console.error('Hit test init failed',err)});session.addEventListener('end',()=>{hitTestSourceRequested=false;hitTestSource=null});hitTestSourceRequested=true}if(hitTestSource&&!arPlaced){const ref=renderer.xr.getReferenceSpace(),hits=frame.getHitTestResults(hitTestSource);if(hits.length){const pose=hits[0].getPose(ref);reticle.visible=true;reticle.matrix.fromArray(pose.transform.matrix)}else reticle.visible=false}}
  if(!renderer.xr.isPresenting){controls.enabled=displayMode==='3d';controls.update()}
  renderer.render(scene,camera)
 });
 
-const arBtn=ARButton.createButton(renderer,{requiredFeatures:['hit-test'],optionalFeatures:['dom-overlay'],domOverlay:{root:document.body}});arBtn.textContent='SPUSTIŤ AR';$('arButtonSlot').innerHTML='';$('arButtonSlot').appendChild(arBtn);
-if(!window.isSecureContext){const s=document.createElement('span');s.className='small warn';s.textContent='AR vyžaduje HTTPS (napr. GitHub Pages).';$('arButtonSlot').appendChild(s)}
+function setDiag(id,text,state){const el=$(id);el.textContent=text;el.className=state==='ok'?'diagOk':state==='bad'?'diagBad':'diagWarn'}
+async function runArDiagnostics(){
+  const protocol=location.protocol||'(neznáme)';
+  setDiag('diagProtocol',protocol,protocol==='https:'||location.hostname==='localhost'?'ok':protocol==='file:'?'bad':'warn');
+  setDiag('diagSecure',window.isSecureContext?'Áno':'Nie',window.isSecureContext?'ok':'bad');
+  if(!('xr' in navigator)){
+    setDiag('diagWebxr','Nedostupné','bad');
+    setDiag('diagAr','Nedostupné','bad');
+    $('status').textContent=protocol==='file:'?'AR sa nespustí zo stiahnutého HTML súboru. Otvor túto stránku cez HTTPS.':'Tento prehliadač neposkytuje WebXR.';
+    return false;
+  }
+  setDiag('diagWebxr','Dostupné','ok');
+  try{
+    const supported=await navigator.xr.isSessionSupported('immersive-ar');
+    setDiag('diagAr',supported?'Podporované':'Nepodporované',supported?'ok':'bad');
+    if(!supported)$('status').textContent='Prehliadač alebo zariadenie momentálne neponúka immersive-ar.';
+    return supported;
+  }catch(err){
+    setDiag('diagAr',err.name||'Chyba','bad');
+    $('status').textContent='WebXR kontrola zlyhala: '+(err.message||err.name);
+    return false;
+  }
+}
 
-$('start').addEventListener('click',play);$('pause').addEventListener('click',pause);$('replay').addEventListener('click',replay);$('new').addEventListener('click',rebuild);$('cameraReset').addEventListener('click',resetCamera);$('view3d').addEventListener('click',()=>switchDisplay('3d'));$('viewAr').addEventListener('click',()=>switchDisplay('ar'));
+$('cameraTest').addEventListener('click',async()=>{
+  if(!navigator.mediaDevices?.getUserMedia){setDiag('diagCamera','Camera API nedostupné','bad');return}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    stream.getTracks().forEach(t=>t.stop());
+    setDiag('diagCamera','Povolené','ok');
+    $('status').textContent='Bežný Camera API prístup funguje. WebXR však používa vlastnú XR session; rozhodujúci je výsledok riadku „XR session“ vyššie.';
+  }catch(err){
+    setDiag('diagCamera',err.name||'Zamietnuté','bad');
+    $('status').textContent='Kamera sa neotvorila: '+(err.message||err.name);
+  }
+});
+
+let arStarting=false;
+async function startARSession(){
+  switchDisplay('ar');
+  if(arStarting || renderer.xr.isPresenting) return;
+  arStarting=true;
+  const btn=$('startAr');
+  btn.disabled=true;
+  btn.textContent='Spúšťam AR…';
+  setDiag('diagSession','žiadam o session','warn');
+  try{
+    if(!window.isSecureContext) throw new DOMException('WebXR AR vyžaduje bezpečný HTTPS kontext.','SecurityError');
+    if(!navigator.xr) throw new DOMException('Tento prehliadač neposkytuje WebXR API.','NotSupportedError');
+    // requestSession musí vzniknúť priamo z kliknutia používateľa. Preto ho voláme tu bez
+    // predchádzajúceho asynchrónneho čakania na isSessionSupported().
+    const session=await navigator.xr.requestSession('immersive-ar',{
+      requiredFeatures:['hit-test'],
+      optionalFeatures:['dom-overlay'],
+      domOverlay:{root:document.body}
+    });
+    setDiag('diagSession','spustená','ok');
+    $('status').textContent='AR session je spustená. Pohybuj mobilom a nájdi podlahu alebo stôl.';
+    await renderer.xr.setSession(session);
+  }catch(err){
+    const name=err?.name||'Chyba';
+    const msg=err?.message||String(err);
+    setDiag('diagSession',name,'bad');
+    $('status').textContent=`AR sa nespustilo: ${name} – ${msg}`;
+    console.error('WebXR requestSession failed',err);
+  }finally{
+    arStarting=false;
+    if(!renderer.xr.isPresenting){btn.disabled=false;btn.textContent='📷 Spustiť AR';}
+  }
+}
+
+runArDiagnostics();
+$('startAr').addEventListener('click',startARSession);
+
+$('start').addEventListener('click',play);$('pause').addEventListener('click',pause);$('replay').addEventListener('click',replay);$('new').addEventListener('click',rebuild);$('cameraReset').addEventListener('click',resetCamera);$('view3d').addEventListener('click',()=>switchDisplay('3d'));$('viewAr').addEventListener('click',startARSession);
 $('arScale').addEventListener('change',e=>{arScale=Number(e.target.value);$('stageBadge').textContent=`AR • mierka ${arScale===1?'1 : 1':'1 : 10'}`;if(arPlaced)arRoot.scale.setScalar(arScale)});
 $('modeS').addEventListener('click',()=>{graphMode='s';updateGraphs()});$('modeV').addEventListener('click',()=>{graphMode='v';updateGraphs()});$('modeA').addEventListener('click',()=>{if(family==='accelerated'){graphMode='a';updateGraphs()}});$('clear').addEventListener('click',()=>{strokes[graphMode]=[];drawGraph()});$('reveal').addEventListener('click',()=>{revealed[graphMode]=true;updateGraphs()});$('points').addEventListener('click',()=>{showPts[graphMode]=!showPts[graphMode];updateGraphs()});
 $('familyBar').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{$('familyBar').querySelectorAll('button').forEach(x=>x.classList.remove('active'));b.classList.add('active');family=b.dataset.family}));$('complexityBar').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{$('complexityBar').querySelectorAll('button').forEach(x=>x.classList.remove('active'));b.classList.add('active');complexity=b.dataset.complexity}));$('apply').addEventListener('click',rebuild);
