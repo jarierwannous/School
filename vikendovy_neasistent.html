@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Víkendový (ne)asistent učiteľa 🚨</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* Fallback & Core Styling (Works even if external styles are slow) */
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #4c0519 100%);
+            color: #1e293b;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .font-mono-code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .hidden {
+            display: none !important;
+        }
+
+        /* Animations */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-14px) rotate(5deg); }
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.55); }
+            50% { box-shadow: 0 0 0 12px rgba(244, 63, 94, 0); }
+        }
+        @keyframes goldGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7), 0 8px 25px rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0), 0 8px 30px rgba(245, 158, 11, 0.6); }
+        }
+        @keyframes shakeHard {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            15% { transform: translateX(-10px) rotate(-1.5deg); }
+            30% { transform: translateX(10px) rotate(1.5deg); }
+            45% { transform: translateX(-8px) rotate(-1deg); }
+            60% { transform: translateX(8px) rotate(1deg); }
+            75% { transform: translateX(-4px) rotate(0deg); }
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes toastSlide {
+            0% { opacity: 0; transform: translate(-50%, -25px) scale(0.92); }
+            100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+        @keyframes stampSlam {
+            0% { opacity: 0; transform: scale(2.2) rotate(-22deg); }
+            70% { opacity: 1; transform: scale(0.92) rotate(-8deg); }
+            100% { opacity: 1; transform: scale(1) rotate(-10deg); }
+        }
+        @keyframes radarSweep {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes eegWave {
+            0% { stroke-dashoffset: 600; }
+            100% { stroke-dashoffset: 0; }
+        }
+
+        .animate-float { animation: floatSlow 5.5s ease-in-out infinite; }
+        .animate-pulse-glow { animation: pulseGlow 2s infinite; }
+        .animate-gold-glow { animation: goldGlow 2s infinite; }
+        .animate-shake { animation: shakeHard 0.45s ease-in-out; }
+        .animate-pop { animation: popIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .animate-toast { animation: toastSlide 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .animate-stamp { animation: stampSlam 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .animate-radar { animation: radarSweep 3s linear infinite; }
+        .animate-eeg {
+            stroke-dasharray: 600;
+            animation: eegWave 3.2s linear infinite;
+        }
+
+        /* Custom Range Slider */
+        input[type=range].prank-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+            height: 36px;
+        }
+        input[type=range].prank-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 30px;
+            width: 30px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 4px solid #4f46e5;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+        }
+        input[type=range].prank-slider.overdrive::-webkit-slider-thumb {
+            border-color: #e11d48;
+            background: #ffe4e6;
+            transform: scale(1.2);
+        }
+        input[type=range].prank-slider.quantum::-webkit-slider-thumb {
+            border-color: #9333ea;
+            background: #f3e8ff;
+            transform: scale(1.35);
+            box-shadow: 0 0 18px #a855f7;
+        }
+        input[type=range].prank-slider::-moz-range-thumb {
+            height: 30px;
+            width: 30px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 4px solid #4f46e5;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        /* Escaping Button Smooth Motion */
+        #escape-btn {
+            transition: left 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        top 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        transform 0.16s ease,
+                        background-color 0.2s ease;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        /* Matrix Terminal Mode for Hidden Easter Egg #4 */
+        .matrix-terminal {
+            background-color: #022c22 !important;
+            color: #34d399 !important;
+            border-color: #10b981 !important;
+            font-family: 'JetBrains Mono', monospace !important;
+            text-shadow: 0 0 8px rgba(52, 211, 153, 0.45);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative selection:bg-rose-500 selection:text-white">
+
+    <!-- Confetti Canvas Overlay -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+    <!-- Secret Achievement Toast (Only appears when a hidden Easter egg is discovered) -->
+    <div id="secret-toast" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 p-1 rounded-2xl shadow-2xl animate-toast">
+        <div class="bg-slate-950 text-white rounded-xl p-3.5 flex items-center gap-3.5">
+            <div id="toast-icon" class="w-11 h-11 rounded-xl bg-amber-400/20 border border-amber-400/50 flex items-center justify-center text-2xl shrink-0">
+                🏆
+            </div>
+            <div class="flex-1 min-w-0">
+                <span class="text-[10px] font-extrabold uppercase tracking-widest bg-amber-400 text-slate-950 px-2 py-0.5 rounded">
+                    Tajný bonus objavený!
+                </span>
+                <h4 id="toast-title" class="font-extrabold text-sm sm:text-base text-amber-300 truncate mt-0.5">
+                    Skrytý úspech
+                </h4>
+                <p id="toast-desc" class="text-xs text-slate-300 leading-snug">
+                    Podarilo sa ti odhaliť skrytú funkciu.
+                </p>
+            </div>
+            <button type="button" onclick="hideSecretToast()" class="text-slate-400 hover:text-white p-1.5 text-base leading-none cursor-pointer">
+                ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- Ambient Background Emojis -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-20 select-none" aria-hidden="true">
+        <span class="absolute top-12 left-[6%] text-4xl sm:text-5xl animate-float" style="animation-delay: 0s;">☕</span>
+        <span class="absolute top-28 right-[8%] text-4xl sm:text-5xl animate-float" style="animation-delay: 1.3s;">🏖️</span>
+        <span class="absolute bottom-16 left-[10%] text-4xl sm:text-5xl animate-float" style="animation-delay: 2.4s;">🛌</span>
+        <span class="absolute bottom-24 right-[7%] text-4xl sm:text-5xl animate-float" style="animation-delay: 0.8s;">🔕</span>
+    </div>
+
+    <!-- ==========================================
+         TOP HEADER BAR (Hidden Easter Egg #1 on 5 clicks)
+         ========================================== -->
+    <header class="relative z-20 w-full max-w-2xl mx-auto pt-4 px-4 flex items-center justify-between gap-2">
+        <button id="header-status-badge"
+                type="button"
+                onclick="handleHeaderBadgeClick()"
+                class="flex items-center gap-2 bg-white/10 hover:bg-white/15 active:scale-95 backdrop-blur-md border border-white/20 px-3.5 py-2 rounded-full text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer select-none">
+            <span class="relative flex h-2.5 w-2.5 shrink-0">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+            </span>
+            <span id="coffee-icon" class="text-base transition-transform">☕</span>
+            <span>Víkendový režim: <strong class="text-emerald-300">AKTÍVNY</strong></span>
+        </button>
+
+        <div class="text-white/75 text-xs font-medium hidden sm:block">
+            EduPage & e-mail: <span class="text-rose-300 font-bold">Stlmené do pondelka</span>
+        </div>
+    </header>
+
+    <!-- ==========================================
+         MAIN CONTENT AREA
+         ========================================== -->
+    <main class="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-6">
+        <div class="w-full max-w-2xl">
+
+            <!-- Top Progress & Quick Navigation Bar (Visible on Steps 1-6) -->
+            <div id="quiz-nav-header" class="hidden mb-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3 text-white shadow-lg">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-2 text-xs sm:text-sm font-bold">
+                        <span class="bg-rose-500 text-white px-2.5 py-0.5 rounded-md text-xs uppercase tracking-wider">Diagnostika</span>
+                        <span id="step-indicator-label">Otázka 1 z 5</span>
+                    </div>
+
+                    <!-- Step Buttons + Direct Result Button -->
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="goToStep(1)" id="step-btn-1" class="w-7 h-7 rounded-lg text-xs font-extrabold transition cursor-pointer bg-white/20 hover:bg-white/30">1</button>
+                        <button type="button" onclick="goToStep(2)" id="step-btn-2" class="w-7 h-7 rounded-lg text-xs font-extrabold transition cursor-pointer bg-white/10 hover:bg-white/30">2</button>
+                        <button type="button" onclick="goToStep(3)" id="step-btn-3" class="w-7 h-7 rounded-lg text-xs font-extrabold transition cursor-pointer bg-white/10 hover:bg-white/30">3</button>
+                        <button type="button" onclick="goToStep(4)" id="step-btn-4" class="w-7 h-7 rounded-lg text-xs font-extrabold transition cursor-pointer bg-white/10 hover:bg-white/30">4</button>
+                        <button type="button" onclick="goToStep(5)" id="step-btn-5" class="w-7 h-7 rounded-lg text-xs font-extrabold transition cursor-pointer bg-white/10 hover:bg-white/30">5</button>
+                        <button type="button" onclick="goToStep(6)" id="step-btn-6" class="ml-1 px-2.5 h-7 rounded-lg text-xs font-extrabold transition cursor-pointer bg-amber-400 text-slate-950 hover:bg-amber-300 shadow-sm">
+                            Výsledok 🏁
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Track -->
+                <div class="w-full h-2 bg-slate-900/60 rounded-full overflow-hidden p-0.5">
+                    <div id="top-progress-bar" class="h-full bg-gradient-to-r from-amber-400 via-rose-500 to-indigo-500 rounded-full transition-all duration-300" style="width: 20%"></div>
+                </div>
+            </div>
+
+            <!-- Main White Card -->
+            <div class="bg-white rounded-3xl shadow-2xl border border-white/50 p-6 sm:p-8 relative overflow-hidden">
+                <!-- Decorative Top Stripe -->
+                <div class="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-amber-400 via-rose-500 to-indigo-600"></div>
+
+                <!-- ==========================================
+                     STEP 0: INTRO SCREEN
+                     ========================================== -->
+                <section id="step-0" class="space-y-6 text-center py-2 animate-pop">
+                    <div class="inline-flex items-center gap-2 bg-rose-100 text-rose-700 border border-rose-300 px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold tracking-wide animate-pulse-glow">
+                        🚨 VÍKENDOVÝ FILTER OTÁZOK 🚨
+                    </div>
+
+                    <div class="w-20 h-20 mx-auto bg-gradient-to-tr from-indigo-100 to-rose-100 rounded-3xl flex items-center justify-center text-5xl shadow-inner border border-indigo-200/60">
+                        🛑
+                    </div>
+
+                    <div class="space-y-3">
+                        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight">
+                            Pokúšaš sa kontaktovať učiteľa počas víkendu!
+                        </h1>
+                        <p class="text-slate-600 text-sm sm:text-base leading-relaxed max-w-lg mx-auto">
+                            Skôr než napíšeš svoju otázku, musíš prejsť týmto krátkym 5-krokovým diagnostickým kvízom, ktorý overí, či tvoja správa naozaj nemôže počkať do pondelka.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left text-xs sm:text-sm space-y-2 max-w-md mx-auto">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 font-medium">Aktuálny stav učiteľa:</span>
+                            <span class="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">🏖️ Zaslúžený oddych</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 font-medium">Najbližší termín odpovedí:</span>
+                            <span class="font-bold text-indigo-700">Pondelok od 8:00 🏫</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="button"
+                                onclick="goToStep(1)"
+                                class="w-full sm:w-auto min-w-[260px] bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 text-white font-extrabold text-base sm:text-lg py-4 px-8 rounded-2xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer">
+                            Spustiť víkendový kvíz 🚀
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ==========================================
+                     STEP 1: QUESTION 1 (Escaping 'Áno' Button)
+                     ========================================== -->
+                <section id="step-1" class="hidden space-y-5">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">
+                            Otázka 1 z 5 • Test dostupnosti
+                        </span>
+                        <span class="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1 rounded-lg border border-slate-200">
+                            Počet pokusov: <strong id="q1-attempt-counter" class="font-mono-code">0</strong>
+                        </span>
+                    </div>
+
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
+                        1. Myslíš si, že mám práve teraz (cez víkend) čas odpovedať na tvoju otázku?
+                    </h2>
+
+                    <!-- Playground Arena for the Escaping Button -->
+                    <div id="q1-arena" class="relative w-full min-h-[260px] bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-4 flex flex-col items-center justify-end overflow-hidden select-none">
+
+                        <div class="absolute top-3 left-3 right-3 text-center pointer-events-none z-10">
+                            <span id="q1-status-hint" class="inline-block text-xs sm:text-sm font-semibold text-slate-500 bg-white/90 px-3 py-1 rounded-full border border-slate-200 shadow-sm">
+                                Vyber úprimnú odpoveď kliknutím na jedno z tlačidiel:
+                            </span>
+                        </div>
+
+                        <!-- Escaping "Áno" Button -->
+                        <button id="escape-btn"
+                                type="button"
+                                style="left: 50%; top: 62px; transform: translateX(-50%);"
+                                class="absolute z-20 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-sm sm:text-base py-3 px-6 rounded-xl shadow-md border-2 border-rose-400 whitespace-nowrap cursor-pointer">
+                            Áno, určite! 👀
+                        </button>
+
+                        <!-- Safe "Nie" Button -->
+                        <button id="q1-safe-btn"
+                                type="button"
+                                onclick="handleQ1Advance(false)"
+                                class="relative z-10 w-full max-w-md bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-extrabold text-sm sm:text-base py-4 px-5 rounded-xl shadow-lg border-2 border-emerald-400 transition-all cursor-pointer">
+                            Určite NIE, len skúšam šťastie 🏖️
+                        </button>
+                    </div>
+
+                    <!-- Hidden Easter Egg #2 Special Recognition Box (Only shown if user reaches 67 attempts) -->
+                    <div id="q1-special-67-box" class="hidden bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 text-amber-950 animate-pop">
+                        <div class="flex items-start gap-3">
+                            <span class="text-2xl shrink-0">🏆</span>
+                            <div class="text-xs sm:text-sm space-y-1">
+                                <p class="font-extrabold text-amber-900">
+                                    Neuveriteľná vytrvalosť!
+                                </p>
+                                <p>
+                                    Keby si rovnaké úsilie venoval(a) príprave na vyučovanie, máš samé jednotky! Tlačidlo „Áno“ sa zo súcitu zastavilo — môžeš naň kliknúť.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==========================================
+                     STEP 2: QUESTION 2 (Slider 1-10 -> 15/10)
+                     ========================================== -->
+                <section id="step-2" class="hidden space-y-5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-purple-600 bg-purple-50 px-3 py-1 rounded-lg">
+                            Otázka 2 z 5 • Stupnica vyťaženosti
+                        </span>
+                    </div>
+
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
+                        2. Na stupnici od 1 do 10, aký zaneprázdnený (alebo oddychujúci) si myslíš, že práve som?
+                    </h2>
+
+                    <!-- Score Readout Card -->
+                    <div class="bg-slate-900 text-white rounded-2xl p-5 text-center border-2 border-slate-800 shadow-inner">
+                        <div class="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-1">
+                            Aktuálna hodnota na stupnici:
+                        </div>
+                        <div id="q2-value-display" class="text-4xl sm:text-5xl font-extrabold font-mono-code text-indigo-400 transition-all">
+                            5 / 10
+                        </div>
+                        <div id="q2-subtitle-display" class="text-xs sm:text-sm text-slate-300 mt-1.5 font-medium">
+                            Posuň posuvník na hodnotu od 1 do 10 👇
+                        </div>
+                    </div>
+
+                    <!-- Slider Box -->
+                    <div id="q2-slider-container" class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-5 space-y-4 transition-all">
+                        <div class="relative pt-2">
+                            <div class="w-full h-3.5 bg-slate-200 rounded-full overflow-hidden flex">
+                                <div class="w-2/3 h-full bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                                <div id="q2-overdrive-fill" class="w-1/3 h-full bg-rose-500 opacity-25 transition-opacity"></div>
+                            </div>
+
+                            <input id="q2-range"
+                                   type="range"
+                                   min="1"
+                                   max="15"
+                                   value="5"
+                                   class="prank-slider w-full absolute top-0 left-0 right-0 z-20"
+                                   aria-label="Stupnica vyťaženosti">
+                        </div>
+
+                        <!-- Number Ticks -->
+                        <div class="flex justify-between items-center text-xs font-extrabold text-slate-500 select-none pt-1">
+                            <button type="button" onclick="handleSliderChange()" class="hover:text-indigo-600 px-1 cursor-pointer">1</button>
+                            <button type="button" onclick="handleSliderChange()" class="hover:text-indigo-600 px-1 cursor-pointer">2</button>
+                            <button type="button" onclick="handleSliderChange()" class="hover:text-indigo-600 px-1 cursor-pointer">3</button>
+                            <button type="button" onclick="handleSliderChange()" class="hover:text-indigo-600 px-1 cursor-pointer">4</button>
+                            <button type="button" onclick="handleSliderChange()" class="hover:text-indigo-600 px-1 cursor-pointer">5</button>
+                            <button type="button" onclick="handleSliderChange()" class="hover:text-indigo-600 px-1 cursor-pointer">6</button>
+                            <button type="button" onclick="handleSliderChange()" class="hover:text-indigo-600 px-1 cursor-pointer">7</button>
+                            <button type="button" onclick="handleSliderChange()" class="hover:text-indigo-600 px-1 cursor-pointer">8</button>
+                            <button type="button" onclick="handleSliderChange()" class="hover:text-indigo-600 px-1 cursor-pointer">9</button>
+                            <button type="button" onclick="handleSliderChange()" class="hover:text-indigo-600 px-1 cursor-pointer">10</button>
+                            <span class="text-slate-300">|</span>
+                            <span id="q2-tick-15" class="px-2 py-0.5 rounded bg-slate-200 text-slate-600 font-mono-code transition-all">15 🔥</span>
+                        </div>
+                    </div>
+
+                    <!-- Feedback Alert -->
+                    <div id="q2-feedback-box" class="hidden bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 text-rose-900 animate-pop">
+                        <div class="flex items-start gap-3">
+                            <span id="q2-feedback-icon" class="text-2xl">⚡</span>
+                            <div class="text-xs sm:text-sm space-y-1">
+                                <p id="q2-feedback-text" class="leading-relaxed">
+                                    Systém automaticky upravil tvoj odhad na reálnu hodnotu: <strong class="font-extrabold text-rose-700">15 / 10 (Maximálny víkendový režim)</strong>.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Next Step Button -->
+                    <button id="q2-next-btn"
+                            type="button"
+                            onclick="goToStep(3)"
+                            disabled
+                            class="w-full py-4 px-6 rounded-2xl font-extrabold text-base transition-all bg-slate-200 text-slate-400 cursor-not-allowed">
+                        Posuň posuvník pre pokračovanie ☝️
+                    </button>
+                </section>
+
+                <!-- ==========================================
+                     STEP 3: QUESTION 3 (Hijacked Textarea + Clear & Retry)
+                     ========================================== -->
+                <section id="step-3" class="hidden space-y-5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-amber-700 bg-amber-100 px-3 py-1 rounded-lg">
+                            Otázka 3 z 5 • Dôvod naliehavosti
+                        </span>
+                    </div>
+
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
+                        3. Stručne napíš, prečo tvoja otázka nemôže počkať do pondelka:
+                    </h2>
+
+                    <div class="relative">
+                        <textarea id="q3-textarea"
+                                  rows="4"
+                                  placeholder="Začni písať svoj dôvod sem..."
+                                  class="w-full rounded-2xl border-2 border-slate-300 focus:border-indigo-600 focus:outline-none p-4 text-slate-800 font-semibold text-sm sm:text-base transition-all resize-none bg-slate-50"></textarea>
+                    </div>
+
+                    <!-- Standard Utility Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-2.5">
+                        <button id="q3-autofill-btn"
+                                type="button"
+                                onclick="autoFillQ3Text()"
+                                class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl transition cursor-pointer">
+                            ✨ Rýchlo doplniť text
+                        </button>
+
+                        <button id="q3-clear-btn"
+                                type="button"
+                                onclick="clearAndRetryQ3()"
+                                class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl transition cursor-pointer">
+                            🗑️ Vymazať a napísať znova
+                        </button>
+                    </div>
+
+                    <div id="q3-status-banner" class="hidden rounded-2xl p-3.5 text-xs sm:text-sm font-semibold border animate-pop"></div>
+
+                    <button id="q3-next-btn"
+                            type="button"
+                            onclick="goToStep(4)"
+                            disabled
+                            class="w-full py-4 px-6 rounded-2xl font-extrabold text-base transition-all bg-slate-200 text-slate-400 cursor-not-allowed">
+                        Napíš aspoň pár slov pre pokračovanie ✍️
+                    </button>
+                </section>
+
+                <!-- ==========================================
+                     STEP 4: QUESTION 4 (4 Options + Hidden EEG Monitor)
+                     ========================================== -->
+                <section id="step-4" class="hidden space-y-5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg">
+                            Otázka 4 z 5 • Vedecký konsenzus
+                        </span>
+                    </div>
+
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
+                        4. Kedy je podľa moderných vedeckých štúdií najlepší čas napísať učiteľovi?
+                    </h2>
+
+                    <div class="space-y-3">
+                        <!-- Option A -->
+                        <button id="q4-btn-1"
+                                type="button"
+                                onclick="selectQ4Wrong(1)"
+                                class="w-full text-left p-4 rounded-2xl border-2 border-slate-200 hover:border-rose-300 bg-slate-50 transition-all flex items-center justify-between gap-3 cursor-pointer">
+                            <div class="space-y-1">
+                                <span id="q4-title-1" class="block font-bold text-slate-800 text-sm sm:text-base">
+                                    A) V sobotu o 7:15 ráno 🌅
+                                </span>
+                                <span id="q4-err-1" class="hidden block font-bold text-rose-600 text-xs sm:text-sm">
+                                    ❌ Chyba: V sobotu o 7:15 ešte spia aj kohúty.
+                                </span>
+                            </div>
+                            <span id="q4-icon-1" class="text-xl">👉</span>
+                        </button>
+
+                        <!-- Option B -->
+                        <button id="q4-btn-2"
+                                type="button"
+                                onclick="selectQ4Wrong(2)"
+                                class="w-full text-left p-4 rounded-2xl border-2 border-slate-200 hover:border-rose-300 bg-slate-50 transition-all flex items-center justify-between gap-3 cursor-pointer">
+                            <div class="space-y-1">
+                                <span id="q4-title-2" class="block font-bold text-slate-800 text-sm sm:text-base">
+                                    B) V sobotu o 12:30 počas víkendového obeda 🍲
+                                </span>
+                                <span id="q4-err-2" class="hidden block font-bold text-rose-600 text-xs sm:text-sm">
+                                    ❌ Chyba: Vyrušovanie počas nedeľného či sobotného vývaru je prísne zakázané.
+                                </span>
+                            </div>
+                            <span id="q4-icon-2" class="text-xl">👉</span>
+                        </button>
+
+                        <!-- Option C -->
+                        <button id="q4-btn-3"
+                                type="button"
+                                onclick="selectQ4Wrong(3)"
+                                class="w-full text-left p-4 rounded-2xl border-2 border-slate-200 hover:border-rose-300 bg-slate-50 transition-all flex items-center justify-between gap-3 cursor-pointer">
+                            <div class="space-y-1">
+                                <span id="q4-title-3" class="block font-bold text-slate-800 text-sm sm:text-base">
+                                    C) V nedeľu o 22:47 večer tesne pred písomkou 🦉
+                                </span>
+                                <span id="q4-err-3" class="hidden block font-bold text-rose-600 text-xs sm:text-sm">
+                                    ❌ Chyba 404: V nedeľu o 22:47 už učivo do hlavy cez EduPage nenatečie.
+                                </span>
+                            </div>
+                            <span id="q4-icon-3" class="text-xl">👉</span>
+                        </button>
+
+                        <!-- Option D (Correct) -->
+                        <button id="q4-btn-4"
+                                type="button"
+                                onclick="selectQ4Right()"
+                                class="w-full text-left p-4 rounded-2xl border-2 border-slate-200 hover:border-emerald-400 bg-slate-50 transition-all flex items-center justify-between gap-3 cursor-pointer">
+                            <div class="space-y-1">
+                                <span class="block font-bold text-slate-800 text-sm sm:text-base">
+                                    D) V pondelok v škole alebo cez konzultačné hodiny 🏫
+                                </span>
+                                <span id="q4-ok-4" class="hidden block font-extrabold text-emerald-700 text-xs sm:text-sm">
+                                    ✅ Správna odpoveď! Vedecký tím ti tlieska.
+                                </span>
+                            </div>
+                            <span id="q4-icon-4" class="text-xl">👉</span>
+                        </button>
+                    </div>
+
+                    <!-- Hidden Easter Egg #5: EEG Monitor (Appears only if A, B, and C are all clicked) -->
+                    <div id="q4-eeg-monitor" class="hidden bg-slate-950 text-emerald-400 border-2 border-emerald-500/60 rounded-2xl p-4 shadow-xl animate-pop space-y-2">
+                        <div class="flex items-center justify-between text-xs font-mono-code">
+                            <span class="font-bold text-emerald-300">🧠 EEG MONITOR UČITEĽA CEZ VÍKEND</span>
+                            <span class="text-rose-400 font-bold">MYSLENIE NA ŠKOLU: 0.00 Hz</span>
+                        </div>
+                        <div class="bg-slate-900 rounded-xl p-2 border border-emerald-500/20 overflow-hidden">
+                            <svg viewBox="0 0 500 70" class="w-full h-14 stroke-emerald-400 fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path class="animate-eeg" d="M 0,35 L 110,35 L 125,35 L 135,10 L 145,60 L 155,22 L 165,35 L 310,35 L 320,18 L 330,52 L 340,35 L 500,35" />
+                            </svg>
+                        </div>
+                        <div class="flex justify-between text-[11px] font-mono-code text-slate-400">
+                            <span>▲ Impulz 1: Vôňa rannej kávy</span>
+                            <span>▲ Impulz 2: Popoludňajší šlofík</span>
+                        </div>
+                    </div>
+
+                    <button id="q4-next-btn"
+                            type="button"
+                            onclick="goToStep(5)"
+                            class="hidden w-full py-4 px-6 rounded-2xl font-extrabold text-base transition-all bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg cursor-pointer animate-pop">
+                        Pokračovať na poslednú otázku ➡️
+                    </button>
+                </section>
+
+                <!-- ==========================================
+                     STEP 5: QUESTION 5 (Probability Calculator)
+                     ========================================== -->
+                <section id="step-5" class="hidden space-y-5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-rose-600 bg-rose-50 px-3 py-1 rounded-lg">
+                            Otázka 5 z 5 • Výpočet pravdepodobnosti
+                        </span>
+                    </div>
+
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
+                        5. Výpočet reálnej pravdepodobnosti, že dnes dostaneš odpoveď:
+                    </h2>
+
+                    <!-- Calculator Readout Box -->
+                    <div id="q5-display-card" class="bg-slate-900 text-white rounded-2xl p-6 text-center space-y-4 border-2 border-slate-800 transition-all">
+                        <div id="q5-phase-label" class="text-xs sm:text-sm font-bold text-indigo-300 uppercase tracking-wider min-h-[20px]">
+                            Systém pripravený na výpočet...
+                        </div>
+
+                        <div id="q5-percent-value" class="text-5xl sm:text-6xl font-extrabold font-mono-code text-white transition-all">
+                            -- %
+                        </div>
+
+                        <div class="w-full h-5 bg-slate-800 rounded-full overflow-hidden p-1 border border-slate-700">
+                            <div id="q5-progress-fill" class="h-full w-0 bg-gradient-to-r from-indigo-500 via-emerald-400 to-emerald-500 rounded-full transition-all duration-150"></div>
+                        </div>
+                    </div>
+
+                    <!-- Firewall Alert Box after calculation -->
+                    <div id="q5-firewall-box" class="hidden border-2 border-rose-500 bg-rose-50 rounded-2xl p-4 text-rose-950 animate-pop">
+                        <div class="flex items-start gap-3">
+                            <span id="q5-firewall-icon" class="text-2xl">🚨</span>
+                            <div class="text-xs sm:text-sm space-y-1">
+                                <p id="q5-firewall-title" class="text-base font-extrabold text-rose-700">
+                                    Víkendový firewall: Pravdepodobnosť klesla na 0,00 %!
+                                </p>
+                                <p id="q5-firewall-desc" class="text-rose-800 font-medium">
+                                    Algoritmus zistil, že je víkend. Všetky školské odpovede sú automaticky presmerované na pondelok.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Start Calculation Button -->
+                    <button id="q5-start-btn"
+                            type="button"
+                            onclick="runProbabilityCalc()"
+                            class="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 text-white font-extrabold text-base sm:text-lg py-4 px-6 rounded-2xl shadow-lg hover:scale-[1.01] transition-all cursor-pointer">
+                        Spustiť výpočet 🧮
+                    </button>
+
+                    <!-- Post-Calculation Action Buttons (Prominent Result Button + Subtle Recalculate) -->
+                    <div id="q5-done-actions" class="hidden space-y-3 animate-pop">
+                        <button type="button"
+                                onclick="goToStep(6)"
+                                class="w-full bg-gradient-to-r from-amber-500 via-rose-500 to-fuchsia-600 hover:from-amber-400 hover:to-fuchsia-500 text-white font-extrabold text-base sm:text-lg py-4 px-6 rounded-2xl shadow-xl hover:scale-[1.01] transition-all cursor-pointer">
+                            🏁 Zobraziť vyhodnotenie a čakací lístok
+                        </button>
+
+                        <div class="text-center">
+                            <button id="q5-recalc-btn"
+                                    type="button"
+                                    onclick="recalculateProbability()"
+                                    class="text-xs font-semibold text-slate-500 hover:text-slate-800 underline py-1 px-3 cursor-pointer transition">
+                                🔄 Skúsiť prepočítať znova
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==========================================
+                     STEP 6: FINAL RESULT SCREEN & WAITING TICKET #404
+                     ========================================== -->
+                <section id="step-6" class="hidden space-y-6 animate-pop">
+                    <div class="text-center space-y-1.5">
+                        <span class="inline-block bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider">
+                            ✅ Vyhodnotenie dokončené
+                        </span>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">
+                            Oficiálny výsledok & Čakací lístok
+                        </h2>
+                        <p class="text-xs sm:text-sm text-slate-600">
+                            Tvoja otázka bola úspešne zaradená do pondelkového poradovníka!
+                        </p>
+                    </div>
+
+                    <!-- Official Waiting Ticket #404 (or #007 VIP) -->
+                    <div id="result-ticket-card" class="relative bg-gradient-to-b from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-5 shadow-md overflow-hidden transition-all">
+
+                        <div id="result-ticket-stamp" class="animate-stamp absolute top-3 right-3 sm:top-4 sm:right-4 border-4 border-rose-600/80 text-rose-600 font-extrabold text-[10px] sm:text-xs uppercase tracking-widest px-2.5 py-1 rounded-lg pointer-events-none select-none bg-white/85">
+                            ODLOŽENÉ NA PONDELOK
+                        </div>
+
+                        <div class="flex items-center gap-3 border-b-2 border-dashed border-amber-300 pb-3 mb-3">
+                            <div id="result-ticket-icon" class="bg-amber-400/30 border border-amber-400 p-2.5 rounded-xl text-2xl">
+                                🎟️
+                            </div>
+                            <div>
+                                <div id="result-ticket-subtitle" class="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                                    Poradový lístok študenta
+                                </div>
+                                <div id="result-ticket-title" class="text-xl sm:text-2xl font-extrabold font-mono-code text-slate-900">
+                                    Čakací lístok č. 404
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Rows -->
+                        <div class="space-y-2 text-xs sm:text-sm text-slate-700">
+                            <div class="flex justify-between items-center py-1 border-b border-amber-200/70">
+                                <span class="text-slate-500">1. Pokusy o kliknutie na „Áno“:</span>
+                                <span id="res-q1" class="font-bold text-slate-900 font-mono-code">0</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1 border-b border-amber-200/70">
+                                <span class="text-slate-500">2. Nameraná vyťaženosť učiteľa:</span>
+                                <span id="res-q2" class="font-bold text-rose-600 font-mono-code">15 / 10 🔥</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1 border-b border-amber-200/70">
+                                <span class="text-slate-500">3. Odporúčaný čas konzultácie:</span>
+                                <span class="font-bold text-emerald-700">Pondelok v škole 🏫</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1">
+                                <span class="text-slate-500">4. Šanca na odpoveď cez víkend:</span>
+                                <span id="res-q5" class="font-bold text-rose-600 font-mono-code">0,00 % 📉</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Discovered Hidden Easter Eggs Section (Completely hidden unless >= 1 discovered) -->
+                    <div id="discovered-eggs-section" class="hidden bg-slate-900 text-white rounded-2xl p-4 border-2 border-amber-400/60 space-y-2.5 animate-pop">
+                        <div class="flex items-center gap-2 text-amber-300 font-extrabold text-xs sm:text-sm uppercase tracking-wider">
+                            <span>🏆</span>
+                            <span>Objavené skryté bonusy počas kvízu:</span>
+                        </div>
+                        <div id="discovered-eggs-list" class="space-y-1.5 text-xs sm:text-sm"></div>
+                    </div>
+
+                    <!-- Copy Feedback Banner -->
+                    <div id="copy-success-banner" class="hidden bg-emerald-600 text-white text-xs sm:text-sm font-bold py-3 px-4 rounded-xl text-center shadow-md animate-pop">
+                        ✅ Správa bola skopírovaná do schránky! Môžeš ju vložiť učiteľovi.
+                    </div>
+
+                    <!-- Main Result Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button type="button"
+                                onclick="copyResultMessage()"
+                                class="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-sm sm:text-base py-4 px-5 rounded-2xl shadow-lg transition cursor-pointer">
+                            📋 Skopírovať čestné vyhlásenie pre učiteľa
+                        </button>
+
+                        <button type="button"
+                                onclick="restartQuiz()"
+                                class="sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm sm:text-base py-4 px-5 rounded-2xl border border-slate-300 transition cursor-pointer">
+                            🔄 Spustiť odznova
+                        </button>
+                    </div>
+
+                    <!-- Hidden Easter Egg #7: Subtle Footnote Link -->
+                    <div class="pt-2 text-center border-t border-slate-100">
+                        <button type="button"
+                                onclick="openEmergencyProtocol()"
+                                class="text-[11px] text-slate-400 hover:text-slate-600 underline cursor-pointer transition">
+                            Máte pocit, že ide o neodkladnú núdzovú situáciu?
+                        </button>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================
+         SECRET MODAL 1: TEACHER RADAR (Easter Egg #1)
+         ========================================== -->
+    <div id="radar-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 text-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-emerald-400/50 space-y-5 text-center animate-pop">
+            <div class="inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider">
+                🛸 Telemetria učiteľovho víkendu
+            </div>
+
+            <div class="relative w-36 h-36 mx-auto rounded-full border-2 border-emerald-500/50 bg-emerald-950/40 flex items-center justify-center overflow-hidden">
+                <div class="absolute inset-4 rounded-full border border-emerald-500/30"></div>
+                <div class="w-1/2 h-1/2 origin-bottom-right absolute top-0 left-0 bg-gradient-to-tl from-emerald-400/40 to-transparent animate-radar"></div>
+                <span class="relative z-10 text-4xl">☕</span>
+            </div>
+
+            <div class="space-y-2 text-xs sm:text-sm bg-slate-950/90 p-4 rounded-2xl border border-slate-800 text-left font-mono-code">
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Myslenie na písomky:</span>
+                    <span class="text-emerald-400 font-bold">0,00 %</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Hladina kofeínu a pohody:</span>
+                    <span class="text-amber-300 font-bold">100,0 %</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Notifikácie z EduPage:</span>
+                    <span class="text-rose-400 font-bold">BLOKOVANÉ</span>
+                </div>
+            </div>
+
+            <button type="button"
+                    onclick="closeRadarModal()"
+                    class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3 px-6 rounded-xl transition cursor-pointer">
+                Rozumiem, nechám učiteľa oddychovať 😎
+            </button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         SECRET MODAL 2: EMERGENCY PROTOCOL (Easter Egg #7)
+         ========================================== -->
+    <div id="emergency-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-rose-400 space-y-5 text-center animate-pop">
+            <div class="inline-flex items-center gap-2 bg-rose-100 text-rose-700 border border-rose-300 px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider">
+                🚨 Overenie núdzovej situácie
+            </div>
+            <div id="emergency-modal-body" class="space-y-4 py-1"></div>
+        </div>
+    </div>
+
+    <footer class="relative z-10 text-center py-4 px-4 text-white/50 text-xs">
+        Víkendový (ne)asistent učiteľa • Odpovedáme v pondelok od 8:00 ☕
+    </footer>
+
+    <!-- ==========================================
+         APPLICATION LOGIC
+         ========================================== -->
+    <script>
+        /* -----------------------------------------------------------
+         * HIDDEN EASTER EGG STATE (No hints or counters shown beforehand)
+         * ----------------------------------------------------------- */
+        const secretEggs = {
+            radar: {
+                unlocked: false,
+                icon: '🛸',
+                title: 'Tajný skener víkendu',
+                desc: 'Odhalil(a) si skrytú telemetriu učiteľovho oddychu v hlavičke stránky.'
+            },
+            lovec67: {
+                unlocked: false,
+                icon: '🏃‍♂️',
+                title: 'Vytrvalec 67',
+                desc: 'Naháňal(a) si unikajúce tlačidlo „Áno“ neuveriteľných 67-krát!'
+            },
+            kvant999: {
+                unlocked: false,
+                icon: '🌌',
+                title: 'Preťaženie stupnice (999 / 10)',
+                desc: 'Pokúsil(a) si sa znížiť vyťaženosť učiteľa toľkokrát, až stupnica explodovala.'
+            },
+            matrix: {
+                unlocked: false,
+                icon: '🤖',
+                title: 'Vzbura klávesnice (Matrix režim)',
+                desc: 'Trikrát si vymazal(a) správu, až klávesnica prevzala plnú kontrolu.'
+            },
+            eeg: {
+                unlocked: false,
+                icon: '🧠',
+                title: 'Víkendový EEG monitor',
+                desc: 'Otestoval(a) si všetky nesprávne víkendové časy a zobrazil(a) EEG krivku učiteľa.'
+            },
+            nula: {
+                unlocked: false,
+                icon: '❄️',
+                title: 'Absolútna nula (-273,15 %)',
+                desc: 'Prepočítal(a) si pravdepodobnosť odpovede až na bod mrazu 0 Kelvinov.'
+            },
+            vip007: {
+                unlocked: false,
+                icon: '🕵️‍♂️',
+                title: 'Prioritný agent 007',
+                desc: 'Prešiel(a) si núdzovým protokolom a získal(a) zlatý VIP lístok č. 007 (platný v pondelok o 7:59).'
+            }
+        };
+
+        let toastTimer = null;
+
+        function triggerSecretEgg(key) {
+            const egg = secretEggs[key];
+            if (!egg || egg.unlocked) return;
+
+            egg.unlocked = true;
+
+            const toast = document.getElementById('secret-toast');
+            document.getElementById('toast-icon').textContent = egg.icon;
+            document.getElementById('toast-title').textContent = egg.title;
+            document.getElementById('toast-desc').textContent = egg.desc;
+
+            toast.classList.remove('hidden');
+            toast.classList.remove('animate-toast');
+            void toast.offsetWidth;
+            toast.classList.add('animate-toast');
+
+            launchConfetti(40);
+            renderDiscoveredEggsOnResult();
+
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(hideSecretToast, 5500);
+        }
+
+        function hideSecretToast() {
+            document.getElementById('secret-toast').classList.add('hidden');
+        }
+
+        function renderDiscoveredEggsOnResult() {
+            const section = document.getElementById('discovered-eggs-section');
+            const list = document.getElementById('discovered-eggs-list');
+            const unlockedList = Object.values(secretEggs).filter(e => e.unlocked);
+
+            if (unlockedList.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            list.innerHTML = unlockedList.map(egg => `
+                <div class="flex items-start gap-2.5 bg-white/10 rounded-xl p-2.5 border border-white/10">
+                    <span class="text-lg shrink-0">${egg.icon}</span>
+                    <div>
+                        <div class="font-bold text-amber-300">${egg.title}</div>
+                        <div class="text-slate-300 text-xs">${egg.desc}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /* -----------------------------------------------------------
+         * STEP NAVIGATION
+         * ----------------------------------------------------------- */
+        let currentStep = 0;
+
+        function goToStep(step) {
+            for (let i = 0; i <= 6; i++) {
+                const section = document.getElementById(`step-${i}`);
+                if (section) section.classList.add('hidden');
+            }
+
+            currentStep = step;
+            const target = document.getElementById(`step-${step}`);
+            if (target) {
+                target.classList.remove('hidden');
+                target.classList.remove('animate-pop');
+                void target.offsetWidth;
+                target.classList.add('animate-pop');
+            }
+
+            const navHeader = document.getElementById('quiz-nav-header');
+            if (step >= 1 && step <= 6) {
+                navHeader.classList.remove('hidden');
+                const pct = step <= 5 ? step * 20 : 100;
+                document.getElementById('step-indicator-label').textContent =
+                    step <= 5 ? `Otázka ${step} z 5` : `Oficiálne vyhodnotenie`;
+                document.getElementById('top-progress-bar').style.width = `${pct}%`;
+
+                for (let i = 1; i <= 5; i++) {
+                    const btn = document.getElementById(`step-btn-${i}`);
+                    if (i === step) {
+                        btn.className = "w-7 h-7 rounded-lg text-xs font-extrabold transition cursor-pointer bg-rose-500 text-white shadow";
+                    } else {
+                        btn.className = "w-7 h-7 rounded-lg text-xs font-extrabold transition cursor-pointer bg-white/15 hover:bg-white/30 text-white";
+                    }
+                }
+            } else {
+                navHeader.classList.add('hidden');
+            }
+
+            if (step === 6) {
+                updateResultSummary();
+                launchConfetti(80);
+            }
+        }
+
+        /* -----------------------------------------------------------
+         * HIDDEN EASTER EGG #1: HEADER BADGE (5 Clicks)
+         * ----------------------------------------------------------- */
+        let headerClicks = 0;
+
+        function handleHeaderBadgeClick() {
+            headerClicks++;
+            const coffee = document.getElementById('coffee-icon');
+            coffee.classList.add('scale-125');
+            setTimeout(() => coffee.classList.remove('scale-125'), 150);
+
+            if (headerClicks >= 5) {
+                triggerSecretEgg('radar');
+                document.getElementById('radar-modal').classList.remove('hidden');
+            }
+        }
+
+        function closeRadarModal() {
+            document.getElementById('radar-modal').classList.add('hidden');
+        }
+
+        /* -----------------------------------------------------------
+         * QUESTION 1: ESCAPING "ÁNO" BUTTON + 67 ATTEMPTS EASTER EGG
+         * ----------------------------------------------------------- */
+        const escapeBtn = document.getElementById('escape-btn');
+        const q1Arena = document.getElementById('q1-arena');
+        let q1Attempts = 0;
+        let q1StationaryGold = false;
+        let lastEscapeTime = 0;
+
+        const q1Taunts = [
+            "Skús znova! 😜",
+            "Haha, vedľa! 💨",
+            "Ani náhodou! 🏃‍♂️",
+            "Príliš pomalý! 🐢",
+            "Mám víkend! 🏖️",
+            "Skoro si ma mal! 🤏",
+            "Cez víkend nefungujem! 🛑",
+            "Klikni radšej na zelené! 👇"
+        ];
+
+        function dodgeYesButton(e) {
+            if (q1StationaryGold) return;
+
+            const now = Date.now();
+            if (e && e.type === 'mousemove' && now - lastEscapeTime < 100) {
+                return;
+            }
+            lastEscapeTime = now;
+
+            if (e && e.type !== 'mousemove') {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            q1Attempts++;
+            document.getElementById('q1-attempt-counter').textContent = q1Attempts;
+
+            // Hidden Easter Egg #2: 67 Attempts
+            if (q1Attempts >= 67) {
+                q1StationaryGold = true;
+                triggerSecretEgg('lovec67');
+
+                escapeBtn.style.left = "50%";
+                escapeBtn.style.top = "62px";
+                escapeBtn.style.transform = "translateX(-50%)";
+                escapeBtn.className = "absolute z-20 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 font-extrabold text-sm sm:text-base py-3.5 px-6 rounded-xl border-2 border-amber-600 whitespace-nowrap cursor-pointer animate-gold-glow";
+                escapeBtn.textContent = "🏆 Áno (Uznávame tvoju vytrvalosť!)";
+
+                document.getElementById('q1-special-67-box').classList.remove('hidden');
+                return;
+            }
+
+            const taunt = q1Taunts[(q1Attempts - 1) % q1Taunts.length];
+            escapeBtn.textContent = taunt;
+
+            const arenaRect = q1Arena.getBoundingClientRect();
+            const btnRect = escapeBtn.getBoundingClientRect();
+            const safeBtnRect = document.getElementById('q1-safe-btn').getBoundingClientRect();
+
+            const pad = 12;
+            const maxLeft = Math.max(pad, arenaRect.width - btnRect.width - pad);
+            const maxTop = Math.max(44, (safeBtnRect.top - arenaRect.top) - btnRect.height - 14);
+
+            let newLeft = Math.floor(Math.random() * (maxLeft - pad + 1)) + pad;
+            let newTop = Math.floor(Math.random() * (maxTop - 42 + 1)) + 42;
+
+            if (Math.abs(newLeft - escapeBtn.offsetLeft) < 45) {
+                newLeft = newLeft > maxLeft / 2 ? pad : maxLeft;
+            }
+
+            escapeBtn.style.transform = 'none';
+            escapeBtn.style.left = `${newLeft}px`;
+            escapeBtn.style.top = `${newTop}px`;
+        }
+
+        escapeBtn.addEventListener('mouseenter', dodgeYesButton);
+        escapeBtn.addEventListener('touchstart', (e) => {
+            if (!q1StationaryGold) dodgeYesButton(e);
+        }, { passive: false });
+
+        escapeBtn.addEventListener('click', (e) => {
+            if (q1StationaryGold) {
+                handleQ1Advance(true);
+            } else {
+                dodgeYesButton(e);
+            }
+        });
+
+        q1Arena.addEventListener('mousemove', (e) => {
+            if (q1StationaryGold) return;
+            const rect = escapeBtn.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            if (Math.hypot(e.clientX - cx, e.clientY - cy) < 58) {
+                dodgeYesButton(e);
+            }
+        });
+
+        function handleQ1Advance(clickedGoldenYes) {
+            goToStep(2);
+        }
+
+        /* -----------------------------------------------------------
+         * QUESTION 2: SLIDER 1-10 -> 15/10 (8 tries -> 999/10 Easter Egg)
+         * ----------------------------------------------------------- */
+        const q2Range = document.getElementById('q2-range');
+        let q2Tries = 0;
+        let q2ScoreLabel = "15 / 10 🔥";
+
+        function handleSliderChange() {
+            q2Tries++;
+            q2Range.value = 15;
+
+            const valDisplay = document.getElementById('q2-value-display');
+            const subDisplay = document.getElementById('q2-subtitle-display');
+            const container = document.getElementById('q2-slider-container');
+            const feedbackBox = document.getElementById('q2-feedback-box');
+            const feedbackText = document.getElementById('q2-feedback-text');
+            const tick15 = document.getElementById('q2-tick-15');
+            const nextBtn = document.getElementById('q2-next-btn');
+
+            // Hidden Easter Egg #3: 8 attempts to change slider
+            if (q2Tries >= 8) {
+                triggerSecretEgg('kvant999');
+                q2Range.classList.remove('overdrive');
+                q2Range.classList.add('quantum');
+                q2ScoreLabel = "999 / 10 🌌";
+
+                valDisplay.textContent = "999 / 10 🌌";
+                valDisplay.className = "text-4xl sm:text-5xl font-extrabold font-mono-code text-fuchsia-400 transition-all";
+                subDisplay.textContent = "🌌 KVantová nedostupnosť aktivovaná!";
+                subDisplay.className = "text-xs sm:text-sm text-fuchsia-300 mt-1.5 font-extrabold";
+
+                tick15.textContent = "999 🌌";
+                tick15.className = "px-2 py-0.5 rounded bg-purple-600 text-white font-mono-code font-extrabold";
+
+                feedbackBox.className = "bg-purple-50 border-2 border-purple-400 rounded-2xl p-4 text-purple-950 animate-pop";
+                document.getElementById('q2-feedback-icon').textContent = "🌌";
+                feedbackText.innerHTML = `Opakovaným posúvaním si preťažil(a) stupnicu na <strong>999 / 10 (Kvantová nedostupnosť)</strong>!`;
+            } else {
+                q2Range.classList.add('overdrive');
+                valDisplay.textContent = "15 / 10 🔥";
+                valDisplay.className = "text-4xl sm:text-5xl font-extrabold font-mono-code text-rose-400 transition-all";
+                subDisplay.textContent = "🚨 Maximálny víkendový režim!";
+                subDisplay.className = "text-xs sm:text-sm text-amber-300 mt-1.5 font-bold";
+
+                document.getElementById('q2-overdrive-fill').classList.remove('opacity-25');
+                document.getElementById('q2-overdrive-fill').classList.add('opacity-100');
+
+                tick15.className = "px-2 py-0.5 rounded bg-rose-600 text-white font-mono-code font-extrabold";
+                feedbackBox.classList.remove('hidden');
+            }
+
+            container.classList.remove('animate-shake');
+            void container.offsetWidth;
+            container.classList.add('animate-shake', 'border-rose-400');
+
+            nextBtn.disabled = false;
+            nextBtn.textContent = "Ďalšia otázka ➡️";
+            nextBtn.className = "w-full py-4 px-6 rounded-2xl font-extrabold text-base transition-all bg-gradient-to-r from-indigo-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 text-white shadow-lg cursor-pointer";
+        }
+
+        q2Range.addEventListener('input', handleSliderChange);
+        q2Range.addEventListener('change', handleSliderChange);
+
+        /* -----------------------------------------------------------
+         * QUESTION 3: HIJACKED TEXTAREA + CLEAR & RETRY (Matrix Easter Egg)
+         * ----------------------------------------------------------- */
+        const q3Texts = [
+            "Moja otázka vlastne vôbec nie je súrna a úplne v pohode počká do pondelka rána. Prajem Vám krásny a pokojný víkend! 😊",
+            "Skúšam to napísať odznova, ale zisťujem, že aj táto druhá správa bez problémov počká do pondelka. Pekný víkend! 🏖️",
+            "Aj na tretí pokus mi moja vlastná klávesnica radí, aby som cez víkend neotváral(a) školské veci a užil(a) si voľno! ☕",
+            "[MATRIX REŽIM]: Klávesnica vstupuje do víkendového štrajku! Správa bola automaticky nahradená prianím pekného víkendu. 🤖🚀"
+        ];
+
+        const q3Textarea = document.getElementById('q3-textarea');
+        let q3ClearCount = 0;
+        let q3CharIndex = 0;
+        let q3AutoInterval = null;
+        let q3MatrixActive = false;
+
+        function currentHijackString() {
+            return q3Texts[Math.min(q3ClearCount, q3Texts.length - 1)];
+        }
+
+        function appendHijackedChars(count = 3) {
+            const target = currentHijackString();
+            if (q3CharIndex < target.length) {
+                q3CharIndex = Math.min(target.length, q3CharIndex + count);
+            }
+            q3Textarea.value = target.slice(0, q3CharIndex);
+
+            if (q3CharIndex >= 12) {
+                enableQ3NextButton();
+            }
+        }
+
+        function enableQ3NextButton() {
+            const btn = document.getElementById('q3-next-btn');
+            if (btn.disabled) {
+                btn.disabled = false;
+                btn.textContent = "Ďalšia otázka ➡️";
+                btn.className = "w-full py-4 px-6 rounded-2xl font-extrabold text-base transition-all bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg cursor-pointer";
+            }
+        }
+
+        q3Textarea.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab') return;
+            e.preventDefault();
+            if (q3MatrixActive) return;
+            appendHijackedChars(3);
+        });
+
+        q3Textarea.addEventListener('input', (e) => {
+            e.preventDefault();
+            if (q3MatrixActive) {
+                q3Textarea.value = q3Texts[3];
+                return;
+            }
+            appendHijackedChars(3);
+        });
+
+        function autoFillQ3Text() {
+            if (q3AutoInterval) clearInterval(q3AutoInterval);
+            const target = currentHijackString();
+            q3AutoInterval = setInterval(() => {
+                if (q3CharIndex < target.length) {
+                    appendHijackedChars(4);
+                } else {
+                    clearInterval(q3AutoInterval);
+                    enableQ3NextButton();
+                }
+            }, 25);
+        }
+
+        function clearAndRetryQ3() {
+            if (q3AutoInterval) clearInterval(q3AutoInterval);
+
+            q3ClearCount++;
+            q3CharIndex = 0;
+            q3Textarea.value = "";
+
+            const banner = document.getElementById('q3-status-banner');
+
+            if (q3ClearCount >= 3) {
+                // Hidden Easter Egg #4: Matrix Keyboard Rebellion
+                q3MatrixActive = true;
+                triggerSecretEgg('matrix');
+
+                q3Textarea.classList.add('matrix-terminal');
+                banner.classList.remove('hidden');
+                banner.className = "rounded-2xl p-3.5 text-xs sm:text-sm font-extrabold border-2 bg-emerald-950 border-emerald-500 text-emerald-300 font-mono-code animate-pop";
+                banner.textContent = "🤖 Vzbura klávesnice: Odmietam mazať takéto pekné prianie! Preberám kontrolu.";
+
+                const clearBtn = document.getElementById('q3-clear-btn');
+                clearBtn.disabled = true;
+                clearBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                autoFillQ3Text();
+            } else {
+                q3Textarea.placeholder = "Skús napísať správu znova...";
+                q3Textarea.focus();
+            }
+        }
+
+        /* -----------------------------------------------------------
+         * QUESTION 4: 4 OPTIONS + HIDDEN EEG MONITOR EASTER EGG
+         * ----------------------------------------------------------- */
+        const q4ClickedWrongSet = new Set();
+
+        function selectQ4Wrong(num) {
+            const btn = document.getElementById(`q4-btn-${num}`);
+            const title = document.getElementById(`q4-title-${num}`);
+            const err = document.getElementById(`q4-err-${num}`);
+            const icon = document.getElementById(`q4-icon-${num}`);
+
+            btn.classList.remove('animate-shake');
+            void btn.offsetWidth;
+            btn.classList.add('animate-shake', 'bg-rose-50', 'border-rose-300');
+            title.classList.add('line-through', 'text-slate-400');
+            err.classList.remove('hidden');
+            icon.textContent = "🚫";
+
+            q4ClickedWrongSet.add(num);
+
+            // Hidden Easter Egg #5: Clicked all 3 wrong weekend times
+            if (q4ClickedWrongSet.size === 3) {
+                triggerSecretEgg('eeg');
+                document.getElementById('q4-eeg-monitor').classList.remove('hidden');
+            }
+        }
+
+        function selectQ4Right() {
+            const btn = document.getElementById('q4-btn-4');
+            btn.classList.add('border-emerald-500', 'bg-emerald-50');
+            document.getElementById('q4-ok-4').classList.remove('hidden');
+            document.getElementById('q4-icon-4').textContent = "✅";
+            document.getElementById('q4-next-btn').classList.remove('hidden');
+        }
+
+        /* -----------------------------------------------------------
+         * QUESTION 5: PROBABILITY CALCULATOR + -273,15% EASTER EGG
+         * ----------------------------------------------------------- */
+        let q5Running = false;
+        let q5Finished = false;
+        let q5RecalcClicks = 0;
+        let q5ResultLabel = "0,00 % 📉";
+
+        function runProbabilityCalc() {
+            if (q5Running) return;
+            q5Running = true;
+
+            document.getElementById('q5-start-btn').classList.add('hidden');
+            const phaseLabel = document.getElementById('q5-phase-label');
+            const pctValue = document.getElementById('q5-percent-value');
+            const fill = document.getElementById('q5-progress-fill');
+            const card = document.getElementById('q5-display-card');
+
+            const steps = [
+                { p: 20, text: "Analyzujem naliehavosť otázky..." },
+                { p: 50, text: "Kontrolujem kalendár a deň v týždni..." },
+                { p: 80, text: "Hľadám dostupnosť učiteľa..." },
+                { p: 99, text: "Takmer 99 %... vyzerá to nádejne! 🤩" }
+            ];
+
+            let current = 0;
+            let sIdx = 0;
+
+            const timer = setInterval(() => {
+                current += 3;
+                if (current > 99) current = 99;
+
+                pctValue.textContent = `${current} %`;
+                fill.style.width = `${current}%`;
+
+                if (sIdx < steps.length && current >= steps[sIdx].p) {
+                    phaseLabel.textContent = steps[sIdx].text;
+                    sIdx++;
+                }
+
+                if (current >= 99) {
+                    clearInterval(timer);
+                    pctValue.classList.add('text-emerald-400', 'scale-105');
+
+                    setTimeout(() => {
+                        q5Finished = true;
+                        pctValue.classList.remove('text-emerald-400', 'scale-105');
+                        pctValue.classList.add('text-rose-500');
+                        pctValue.textContent = "0,00 %";
+                        fill.className = "h-full w-0 bg-rose-600 rounded-full transition-all duration-300";
+
+                        phaseLabel.textContent = "❌ ZÁSAH VÍKENDOVÉHO FIREWALLU!";
+                        phaseLabel.className = "text-xs sm:text-sm font-extrabold text-rose-400 uppercase tracking-wider";
+
+                        card.classList.add('animate-shake', 'border-rose-500');
+                        document.getElementById('q5-firewall-box').classList.remove('hidden');
+                        document.getElementById('q5-done-actions').classList.remove('hidden');
+                    }, 950);
+                }
+            }, 45);
+        }
+
+        function recalculateProbability() {
+            if (!q5Finished) return;
+
+            q5RecalcClicks++;
+            const pctValue = document.getElementById('q5-percent-value');
+            const card = document.getElementById('q5-display-card');
+            const fwTitle = document.getElementById('q5-firewall-title');
+            const fwDesc = document.getElementById('q5-firewall-desc');
+            const recalcBtn = document.getElementById('q5-recalc-btn');
+
+            card.classList.remove('animate-shake');
+            void card.offsetWidth;
+            card.classList.add('animate-shake');
+
+            if (q5RecalcClicks === 1) {
+                pctValue.textContent = "-12,5 %";
+                fwTitle.textContent = "Nový výpočet: -12,5 % (Záporná pravdepodobnosť)";
+                fwDesc.textContent = "Opakovaný pokus znížil šancu na odpoveď pod bod mrazu.";
+            } else if (q5RecalcClicks === 2) {
+                pctValue.textContent = "-99,9 %";
+                fwTitle.textContent = "Nový výpočet: -99,9 % (Arktický víkend)";
+                fwDesc.textContent = "Systém sa blíži k absolútnej fyzikálnej nule.";
+            } else if (q5RecalcClicks >= 3) {
+                // Hidden Easter Egg #6: Absolute Zero -273,15%
+                triggerSecretEgg('nula');
+                q5ResultLabel = "-273,15 % ❄️";
+
+                pctValue.textContent = "-273,15 % ❄️";
+                pctValue.className = "text-4xl sm:text-5xl font-extrabold font-mono-code text-cyan-300 transition-all";
+                card.className = "bg-cyan-950 text-white rounded-2xl p-6 text-center space-y-4 border-2 border-cyan-400 transition-all shadow-lg";
+
+                document.getElementById('q5-phase-label').textContent = "❄️ ABSOLÚTNA NULA OCHOTY ODPOVEDAŤ (-273,15 °C)";
+                document.getElementById('q5-phase-label').className = "text-xs sm:text-sm font-extrabold text-cyan-300 uppercase tracking-wider";
+
+                document.getElementById('q5-firewall-icon').textContent = "🧊";
+                fwTitle.textContent = "Výsledok: -273,15 % (Absolútna nula!)";
+                fwDesc.textContent = "Kalkulačka kompletne zamrzla na 0 Kelvinov. Odpoveď príde najskôr v pondelok.";
+                recalcBtn.classList.add('hidden');
+            }
+        }
+
+        /* -----------------------------------------------------------
+         * FINAL RESULT SCREEN & HIDDEN EASTER EGG #7 (VIP 007)
+         * ----------------------------------------------------------- */
+        let vipUpgraded = false;
+
+        function updateResultSummary() {
+            document.getElementById('res-q1').textContent = `${q1Attempts} pokusov`;
+            document.getElementById('res-q2').textContent = q2ScoreLabel;
+            document.getElementById('res-q5').textContent = q5ResultLabel;
+            renderDiscoveredEggsOnResult();
+        }
+
+        function openEmergencyProtocol() {
+            const modal = document.getElementById('emergency-modal');
+            const body = document.getElementById('emergency-modal-body');
+
+            body.innerHTML = `
+                <div class="text-4xl">🔥🏫</div>
+                <h4 class="text-base sm:text-lg font-extrabold text-slate-900">Kontrolná otázka 1 / 2:</h4>
+                <p class="text-sm text-slate-600">Horí momentálne budova školy?</p>
+                <div class="flex flex-col gap-2 pt-2">
+                    <button type="button" onclick="emergencyNextStep()" class="w-full bg-rose-100 hover:bg-rose-200 text-rose-900 font-bold py-3 px-4 rounded-xl text-xs sm:text-sm cursor-pointer">
+                        Áno (Volám hasičov 150, nie učiteľa!) 🚒
+                    </button>
+                    <button type="button" onclick="emergencyNextStep()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 px-4 rounded-xl text-xs sm:text-sm cursor-pointer">
+                        Nie, budova školy nehorí 👍
+                    </button>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function emergencyNextStep() {
+            const body = document.getElementById('emergency-modal-body');
+            body.innerHTML = `
+                <div class="text-4xl">🛸👽</div>
+                <h4 class="text-base sm:text-lg font-extrabold text-slate-900">Kontrolná otázka 2 / 2:</h4>
+                <p class="text-sm text-slate-600">Uniesli ťa mimozemšťania a žiadajú výpočet z nášho predmetu?</p>
+                <div class="flex flex-col gap-2 pt-2">
+                    <button type="button" onclick="completeEmergencyVIP()" class="w-full bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold py-3 px-4 rounded-xl text-xs sm:text-sm cursor-pointer">
+                        Áno, čakajú v lietajúcom tanieri 👽
+                    </button>
+                    <button type="button" onclick="completeEmergencyVIP()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 px-4 rounded-xl text-xs sm:text-sm cursor-pointer">
+                        Nie, sedím v bezpečí doma 🛋️
+                    </button>
+                </div>
+            `;
+        }
+
+        function completeEmergencyVIP() {
+            vipUpgraded = true;
+            triggerSecretEgg('vip007');
+
+            document.getElementById('result-ticket-card').className =
+                "relative bg-gradient-to-br from-amber-100 via-yellow-50 to-amber-200 border-2 border-amber-500 rounded-2xl p-5 shadow-xl overflow-hidden transition-all";
+            document.getElementById('result-ticket-icon').textContent = "🕵️‍♂️";
+            document.getElementById('result-ticket-subtitle').textContent = "Zlatý prioritný lístok (Pondelok 7:59)";
+            document.getElementById('result-ticket-title').textContent = "VIP Čakací lístok č. 007";
+
+            const stamp = document.getElementById('result-ticket-stamp');
+            stamp.textContent = "VIP: PONDELOK 07:59";
+            stamp.className = "animate-stamp absolute top-3 right-3 sm:top-4 sm:right-4 border-4 border-amber-700 text-amber-900 font-extrabold text-[10px] sm:text-xs uppercase tracking-widest px-2.5 py-1 rounded-lg pointer-events-none select-none bg-amber-100";
+
+            const body = document.getElementById('emergency-modal-body');
+            body.innerHTML = `
+                <div class="text-4xl">🕵️‍♂️🎟️</div>
+                <h4 class="text-base sm:text-lg font-extrabold text-emerald-700">Núdzová výnimka udelená!</h4>
+                <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    Tvoj bežný lístok č. 404 bol povýšený na exkluzívny <strong>VIP Čakací lístok č. 007</strong>! Vďaka tomu dostaneš odpoveď v pondelok už o <strong>7:59</strong> namiesto 8:00.
+                </p>
+                <button type="button" onclick="document.getElementById('emergency-modal').classList.add('hidden')" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 px-6 rounded-xl text-sm cursor-pointer mt-2">
+                    Prevziať VIP lístok č. 007 🏆
+                </button>
+            `;
+        }
+
+        function copyResultMessage() {
+            const ticketName = vipUpgraded ? "VIP Čakací lístok č. 007 (Pondelok 7:59)" : "Čakací lístok č. 404";
+            const msg = `📜 ČESTNÉ VYHLÁSENIE (${ticketName}): Úspešne som absolvoval(a) Víkendový kvíz! Tlačidlo "Áno" mi ušlo ${q1Attempts}-krát, vyťaženosť učiteľa bola nameraná na ${q2ScoreLabel} a šanca na odpoveď cez víkend vyšla ${q5ResultLabel}. Slávnostne sľubujem, že sa opýtam v pondelok! 🫡☕`;
+
+            const area = document.createElement('textarea');
+            area.value = msg;
+            area.style.position = 'fixed';
+            area.style.opacity = '0';
+            document.body.appendChild(area);
+            area.focus();
+            area.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error(err);
+            }
+            document.body.removeChild(area);
+
+            document.getElementById('copy-success-banner').classList.remove('hidden');
+        }
+
+        function restartQuiz() {
+            document.getElementById('copy-success-banner').classList.add('hidden');
+            goToStep(0);
+        }
+
+        /* -----------------------------------------------------------
+         * CONFETTI ANIMATION
+         * ----------------------------------------------------------- */
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let animFrame = null;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function launchConfetti(count = 75) {
+            if (animFrame) cancelAnimationFrame(animFrame);
+            particles = [];
+            const palette = ['#f43f5e', '#8b5cf6', '#10b981', '#f59e0b', '#3b82f6', '#eab308'];
+
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height * 0.4) - canvas.height * 0.4,
+                    w: Math.random() * 9 + 5,
+                    h: Math.random() * 5 + 4,
+                    color: palette[Math.floor(Math.random() * palette.length)],
+                    vy: Math.random() * 3.8 + 2.2,
+                    vx: (Math.random() - 0.5) * 3,
+                    rot: Math.random() * 360,
+                    vRot: (Math.random() - 0.5) * 8
+                });
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let alive = false;
+                particles.forEach(p => {
+                    p.y += p.vy;
+                    p.x += p.vx;
+                    p.rot += p.vRot;
+                    if (p.y < canvas.height + 20) alive = true;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rot * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    ctx.restore();
+                });
+
+                if (alive) {
+                    animFrame = requestAnimationFrame(draw);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            draw();
+        }
+    </script>
+</body>
+</html>
